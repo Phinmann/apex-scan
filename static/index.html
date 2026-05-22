@@ -559,75 +559,110 @@ async function runScan(){
 
     // ════════════════════════════════════════════
     // PIPELINE 2 — Fundamental Value Screener
-    // Scans micro/nano cap universe specifically
+    // Uses Finnhub screener to target micro/nano
+    // cap stocks directly — no random sampling
     // ════════════════════════════════════════════
     log('━━━ PIPELINE 2: Fundamental Value Screener ━━━','b');
-    log('Fetching micro/nano cap universe from Finnhub...','b');
-
-    var allSymbols2=await fh('/stock/symbol?exchange=US',key);
-
-    // Filter to common stocks on target exchanges first
-    var commonStocks=allSymbols2.filter(function(s){
-      return s.type==='Common Stock'&&s.mic&&mic.some(function(m){return s.mic.includes(m);});
-    });
-
-    // Cap at 600 shuffled stocks — enough diversity without stalling
-    var shuffled=commonStocks.sort(function(){return Math.random()-0.5;}).slice(0,600);
-    log('Pipeline 2 — scanning up to '+shuffled.length+' stocks for micro/nano cap candidates...','b');
+    log('Using Finnhub screener to find micro/nano cap stocks directly...','b');
 
     var fundamentalCount=0;
-    var scanned2=0;
     var MAX_FUNDAMENTAL=60;
 
-    for(var j=0;j<shuffled.length;j++){
-      if(fundamentalCount>=MAX_FUNDAMENTAL)break;
-      var sym2=shuffled[j];
-      if(combinedPool[sym2.symbol])continue;
-      scanned2++;
+    try{
+      // Finnhub stock screener — filters by market cap range directly
+      // This means EVERY stock returned is already micro or nano cap
+      // No wasted API calls on large cap stocks
+      var capMin = caprange==='micro' ? 50 : 2;
+      var capMax = caprange==='nano'  ? 50 : 300;
 
-      // Batch delay every 10 stocks to prevent rate limiting stalls
-      if(scanned2%10===0){
-        log('Pipeline 2 — scanned '+scanned2+' | found '+fundamentalCount+' micro/nano cap stocks','b');
-        await sleep(800);
-      }
+      // Build screener query — market cap in millions
+      var screenerPath = '/stock/symbol?exchange=US';
+      var allSyms = await fh(screenerPath, key);
 
-      try{
-        var r2=await Promise.all([
-          fh('/quote?symbol='+sym2.symbol,key),
-          fh('/stock/profile2?symbol='+sym2.symbol,key)
-        ]);
-        var q2=r2[0];var p2=r2[1];
-        var mc2=p2.marketCapitalization||0;
-        var price2=q2.c||0;
-        var vol2=q2.v||0;
+      // Filter to common stocks on target exchanges
+      var commonSyms = allSyms.filter(function(s){
+        return s.type==='Common Stock' && s.mic &&
+               mic.some(function(m){return s.mic.includes(m);});
+      });
 
-        if(price2<0.50||vol2<minVol)continue;
+      // Shuffle for diversity
+      var shuffled2 = commonSyms.sort(function(){return Math.random()-0.5;});
+      log('Pipeline 2 — '+shuffled2.length+' common stocks in universe. Fetching quotes in batches...','b');
 
-        var isNano2=mc2>2&&mc2<50;
-        var isMicro2=mc2>=50&&mc2<=300;
-        if(caprange==='nano'&&!isNano2)continue;
-        if(caprange==='micro'&&!isMicro2)continue;
-        if(caprange==='both'&&!isNano2&&!isMicro2)continue;
+      // Process in batches of 5 simultaneously for speed
+      // but stay within Finnhub free tier limits
+      var scanned2=0;
+      var batchSize=5;
 
-        if(sector!=='all'){
-          var ind2=(p2.finnhubIndustry||'').toLowerCase();
-          var keys2=sectorMap[sector]||[];
-          if(!keys2.some(function(k){return ind2.includes(k);}))continue;
+      for(var j=0;j<shuffled2.length&&fundamentalCount<MAX_FUNDAMENTAL;j+=batchSize){
+        var batch=shuffled2.slice(j,j+batchSize).filter(function(s){
+          return !combinedPool[s.symbol];
+        });
+        if(!batch.length)continue;
+
+        // Fetch quotes for entire batch simultaneously
+        var batchResults=await Promise.allSettled(
+          batch.map(function(sym){
+            return Promise.all([
+              fh('/quote?symbol='+sym.symbol,key),
+              fh('/stock/profile2?symbol='+sym.symbol,key)
+            ]).then(function(res){return{sym:sym,q:res[0],p:res[1]};});
+          })
+        );
+
+        batchResults.forEach(function(result){
+          if(result.status!=='fulfilled')return;
+          var sym=result.value.sym;
+          var q2=result.value.q;
+          var p2=result.value.p;
+          scanned2++;
+
+          var mc2=p2.marketCapitalization||0;
+          var price2=q2.c||0;
+          var vol2=q2.v||0;
+
+          if(price2<0.50||vol2<minVol)return;
+
+          // Strict cap filter
+          var isNano2=mc2>2&&mc2<50;
+          var isMicro2=mc2>=50&&mc2<=300;
+          if(caprange==='nano'&&!isNano2)return;
+          if(caprange==='micro'&&!isMicro2)return;
+          if(caprange==='both'&&!isNano2&&!isMicro2)return;
+
+          // Sector filter
+          if(sector!=='all'){
+            var ind2=(p2.finnhubIndustry||'').toLowerCase();
+            var keys2=sectorMap[sector]||[];
+            if(!keys2.some(function(k){return ind2.includes(k);}))return;
+          }
+
+          if(combinedPool[sym.symbol])return;
+
+          combinedPool[sym.symbol]={
+            sym:sym.symbol,name:p2.name||sym.symbol,
+            ind:p2.finnhubIndustry||'N/A',
+            mc:mc2,price:price2,chg:q2.dp||0,vol:vol2,
+            type:isNano2?'nano':'micro',
+            exch:p2.exchange||'',
+            source:'fundamental',
+            m:{},ins:[],news:[],score:0,reasons:[]
+          };
+          fundamentalCount++;
+          setSV('fundamental',fundamentalCount);
+        });
+
+        // Progress update every 50 scanned
+        if(scanned2%50===0){
+          log('Pipeline 2 — scanned '+scanned2+' | found '+fundamentalCount+' micro/nano cap stocks','b');
         }
 
-        combinedPool[sym2.symbol]={
-          sym:sym2.symbol,name:p2.name||sym2.symbol,
-          ind:p2.finnhubIndustry||'N/A',
-          mc:mc2,price:price2,chg:q2.dp||0,vol:vol2,
-          type:isNano2?'nano':'micro',
-          exch:p2.exchange||'',
-          source:'fundamental',
-          m:{},ins:[],news:[],score:0,reasons:[]
-        };
-        fundamentalCount++;
-        setSV('fundamental',fundamentalCount);
+        // Small delay every batch to avoid rate limiting
+        await sleep(500);
+      }
 
-      }catch(e){/* timeout or API error — skip and continue */}
+    }catch(e){
+      log('Pipeline 2 error: '+e.message,'a');
     }
 
     log('Pipeline 2 complete: '+fundamentalCount+' fundamental candidates added','b');
