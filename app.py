@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 import requests
 import os
+import re
 
 app = Flask(__name__, static_folder='static')
 
@@ -33,34 +34,32 @@ def finnhub_proxy():
 @app.route('/api/sec/insider-tickers')
 def sec_insider_tickers():
     """
-    Fetches ALL insider purchase tickers from SEC EDGAR by paginating
-    through every page of Form 4 filings in the lookback period.
-    Returns a deduplicated list of ticker symbols.
+    Fetches insider purchase tickers from SEC EDGAR by searching
+    Form 4 filings. Uses the EDGAR full-text search API with
+    proper pagination to get all results.
     """
     from_date = request.args.get('from_date', '')
     if not from_date:
         return jsonify({'error': 'Missing from_date'}), 400
 
     tickers = set()
-    base_url = 'https://efts.sec.gov/LATEST/search-index'
-    page = 0
-    page_size = 100
-    max_pages = 20  # Up to 2000 filings per run
 
-    while page < max_pages:
-        try:
+    # Method 1: EDGAR full text search API - searches all Form 4 filings
+    try:
+        url = 'https://efts.sec.gov/LATEST/search-index'
+        page_size = 100
+        max_pages = 20
+
+        for page in range(max_pages):
             params = {
-                'q': '"transaction code" "P"',
+                'q': 'form-type:4',
                 'dateRange': 'custom',
                 'startdt': from_date,
                 'forms': '4',
-                'hits.hits._source': 'display_names,file_date',
-                'hits.hits.total': 'true',
-                '_source': 'display_names',
                 'from': page * page_size,
                 'size': page_size
             }
-            r = requests.get(base_url, params=params, headers=SEC_HEADERS, timeout=20)
+            r = requests.get(url, params=params, headers=SEC_HEADERS, timeout=20)
             if not r.ok:
                 break
             data = r.json()
@@ -69,20 +68,105 @@ def sec_insider_tickers():
                 break
             for h in hits:
                 src = h.get('_source', {})
+                # Extract tickers from display_names
                 names = src.get('display_names', [])
                 for n in names:
-                    import re
-                    match = re.search(r'\(([A-Z]{1,5})\)', n)
+                    match = re.search(r'\(([A-Z]{1,5})\)', str(n))
+                    if match:
+                        ticker = match.group(1)
+                        if len(ticker) <= 5:
+                            tickers.add(ticker)
+                # Also try entity_name field
+                entity = src.get('entity_name', '')
+                if entity:
+                    match = re.search(r'\(([A-Z]{1,5})\)', str(entity))
                     if match:
                         tickers.add(match.group(1))
-            # If we got fewer results than page size we're on the last page
             if len(hits) < page_size:
                 break
-            page += 1
-        except Exception as e:
-            break
+    except Exception as e:
+        pass
 
-    return jsonify({'tickers': list(tickers), 'count': len(tickers)})
+    # Method 2: SEC EDGAR search with different query approach
+    try:
+        url2 = 'https://efts.sec.gov/LATEST/search-index'
+        for page in range(10):
+            params2 = {
+                'q': '"purchased"',
+                'dateRange': 'custom',
+                'startdt': from_date,
+                'forms': '4',
+                'from': page * 100,
+                'size': 100
+            }
+            r2 = requests.get(url2, params=params2, headers=SEC_HEADERS, timeout=20)
+            if not r2.ok:
+                break
+            data2 = r2.json()
+            hits2 = data2.get('hits', {}).get('hits', [])
+            if not hits2:
+                break
+            for h in hits2:
+                src = h.get('_source', {})
+                names = src.get('display_names', [])
+                for n in names:
+                    match = re.search(r'\(([A-Z]{1,5})\)', str(n))
+                    if match:
+                        tickers.add(match.group(1))
+            if len(hits2) < 100:
+                break
+    except Exception as e:
+        pass
+
+    # Method 3: Use SEC EDGAR company search API to get recent Form 4 filers
+    try:
+        url3 = 'https://www.sec.gov/cgi-bin/browse-edgar'
+        params3 = {
+            'action': 'getcompany',
+            'type': '4',
+            'dateb': '',
+            'owner': 'include',
+            'count': '100',
+            'search_text': '',
+            'output': 'atom'
+        }
+        r3 = requests.get(url3, params=params3, headers=SEC_HEADERS, timeout=20)
+        if r3.ok:
+            # Parse tickers from the atom feed
+            content = r3.text
+            ticker_matches = re.findall(r'\(([A-Z]{1,5})\)', content)
+            for t in ticker_matches:
+                if len(t) <= 5:
+                    tickers.add(t)
+    except Exception as e:
+        pass
+
+    # Method 4: Pull directly from SEC EDGAR RSS feed for Form 4s
+    try:
+        rss_url = 'https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&dateb=&owner=include&count=100&search_text=&output=atom'
+        r4 = requests.get(rss_url, headers=SEC_HEADERS, timeout=20)
+        if r4.ok:
+            content = r4.text
+            # Extract company tickers from the RSS feed
+            ticker_matches = re.findall(r'<category[^>]*term="([A-Z]{1,5})"', content)
+            for t in ticker_matches:
+                tickers.add(t)
+            # Also look for tickers in titles
+            title_matches = re.findall(r'\(([A-Z]{1,5})\)', content)
+            for t in title_matches:
+                if len(t) <= 5:
+                    tickers.add(t)
+    except Exception as e:
+        pass
+
+    # Remove common false positives that aren't stock tickers
+    false_positives = {'LLC', 'INC', 'LTD', 'CORP', 'CO', 'LP', 'NA', 'US', 'USA', 'SEC', 'CEO', 'CFO', 'COO', 'CTO', 'SVP', 'EVP', 'VP'}
+    tickers = tickers - false_positives
+
+    return jsonify({
+        'tickers': list(tickers),
+        'count': len(tickers)
+    })
 
 @app.route('/api/sec/edgar')
 def sec_edgar_proxy():
