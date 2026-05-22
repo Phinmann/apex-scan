@@ -331,73 +331,23 @@ async function fh(path,key,retries){
 }
 
 // ── SEC EDGAR insider feed ────────────────────────────────
-// Routes through our Render backend proxy to avoid CORS
+// Uses our Render backend which paginates through ALL SEC EDGAR pages
+// Gets every insider purchase filed in the lookback period — not just page 1
 async function fetchInsiderBuys(lookbackDays){
-  log('Pipeline 1 — Fetching SEC EDGAR insider buy filings via proxy...','g');
-  var tickers=new Set();
-
+  log('Pipeline 1 — Fetching ALL SEC EDGAR insider buy filings (paginated)...','g');
   try{
-    // Route 1: SEC EDGAR full-text search for Form 4 purchase filings
     var fromDate=getPast(lookbackDays);
-    var secPath='/LATEST/search-index?q=%22transaction+code%22+%22P%22&dateRange=custom&startdt='+fromDate+'&forms=4&hits.hits.total=true&hits.hits._source=display_names,file_date,period_of_report';
-    var r=await fetch('/api/sec/edgar?path='+encodeURIComponent(secPath));
-    if(!r.ok)throw new Error('SEC proxy '+r.status);
+    // Call our backend endpoint which handles all pagination server-side
+    var r=await fetch('/api/sec/insider-tickers?from_date='+fromDate);
+    if(!r.ok)throw new Error('SEC insider endpoint '+r.status);
     var data=await r.json();
-    var hits=data.hits&&data.hits.hits?data.hits.hits:[];
-    hits.forEach(function(h){
-      var src=h._source||{};
-      var names=src.display_names||[];
-      names.forEach(function(n){
-        var match=n.match(/\(([A-Z]{1,6})\)/);
-        if(match&&match[1].length<=5)tickers.add(match[1]);
-      });
-    });
-    log('SEC EDGAR Route 1: '+tickers.size+' tickers with insider purchases','g');
+    var tickers=data.tickers||[];
+    log('Pipeline 1 — SEC EDGAR complete: '+tickers.length+' unique insider-buy tickers found across all pages','g');
+    return tickers;
   }catch(e){
-    log('SEC Route 1 issue: '+e.message,'a');
+    log('Pipeline 1 — SEC EDGAR issue: '+e.message,'a');
+    return[];
   }
-
-  try{
-    // Route 2: SEC EDGAR full submissions feed for Form 4s
-    // Gets the most recent Form 4 filings across all companies
-    var secPath2='/LATEST/search-index?q=%22disposedOf%22+%22P%22&forms=4&dateRange=custom&startdt='+getPast(lookbackDays);
-    var r2=await fetch('/api/sec/edgar?path='+encodeURIComponent(secPath2));
-    if(r2.ok){
-      var data2=await r2.json();
-      var hits2=data2.hits&&data2.hits.hits?data2.hits.hits:[];
-      hits2.forEach(function(h){
-        var src=h._source||{};
-        var names=src.display_names||[];
-        names.forEach(function(n){
-          var match=n.match(/\(([A-Z]{1,6})\)/);
-          if(match&&match[1].length<=5)tickers.add(match[1]);
-        });
-      });
-    }
-    log('SEC EDGAR Route 2: '+tickers.size+' total tickers now','g');
-  }catch(e){
-    log('SEC Route 2 issue: '+e.message,'a');
-  }
-
-  try{
-    // Route 3: SEC data.sec.gov company facts for broader coverage
-    // Fetch recent Form 4 RSS feed
-    var r3=await fetch('/api/sec/data?path=/submissions/recent-filings.json');
-    if(r3.ok){
-      var data3=await r3.json();
-      if(data3&&data3.filings){
-        data3.filings.forEach(function(f){
-          if(f.form==='4'&&f.ticker)tickers.add(f.ticker.toUpperCase());
-        });
-      }
-    }
-    log('SEC data.sec.gov Route 3: '+tickers.size+' total tickers','g');
-  }catch(e){
-    log('SEC Route 3 issue (non-critical): '+e.message,'a');
-  }
-
-  log('Pipeline 1 — SEC EDGAR complete: '+tickers.size+' insider-buy tickers found','g');
-  return Array.from(tickers);
 }
 
 // ── Value scoring engine ──────────────────────────────────
