@@ -528,9 +528,14 @@ async function runScan(){
           log('P1 checking: '+ticker+' cap='+fmtCap(mc)+' price=$'+price.toFixed(2),'g');
         }
 
-        // Skip if no meaningful data returned
-        if(!mc||!price)continue;
-        if(price<0.50||vol<minVol)continue;
+        // Skip if no market cap data at all
+        if(!mc)continue;
+
+        // For insider stocks, skip strict price filter
+        // Finnhub sometimes returns $0 for thinly traded stocks
+        // but if an insider is buying it the company is real
+        // Only require minimum volume if we have volume data
+        if(vol>0&&vol<minVol)continue;
 
         var isNano=mc>2&&mc<50;
         var isMicro=mc>=50&&mc<=300;
