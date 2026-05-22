@@ -5,6 +5,8 @@ import os
 app = Flask(__name__, static_folder='static')
 
 FINNHUB_BASE = 'https://finnhub.io/api/v1'
+SEC_BASE = 'https://efts.sec.gov'
+SEC_HEADERS = {'User-Agent': 'APEX/SCAN research@apex-scan.com'}
 
 @app.route('/')
 def index():
@@ -22,6 +24,44 @@ def finnhub_proxy():
         params.pop('path', None)
         params['token'] = token
         r = requests.get(url, params=params, timeout=15)
+        return jsonify(r.json()), r.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/sec')
+def sec_proxy():
+    path = request.args.get('path')
+    if not path:
+        return jsonify({'error': 'Missing path'}), 400
+    try:
+        url = SEC_BASE + path
+        params = dict(request.args)
+        params.pop('path', None)
+        r = requests.get(url, params=params, headers=SEC_HEADERS, timeout=20)
+        return jsonify(r.json()), r.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/sec/edgar')
+def sec_edgar_proxy():
+    path = request.args.get('path')
+    if not path:
+        return jsonify({'error': 'Missing path'}), 400
+    try:
+        url = 'https://efts.sec.gov' + path
+        r = requests.get(url, headers=SEC_HEADERS, timeout=20)
+        return jsonify(r.json()), r.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/sec/data')
+def sec_data_proxy():
+    path = request.args.get('path')
+    if not path:
+        return jsonify({'error': 'Missing path'}), 400
+    try:
+        url = 'https://data.sec.gov' + path
+        r = requests.get(url, headers=SEC_HEADERS, timeout=20)
         return jsonify(r.json()), r.status_code
     except Exception as e:
         return jsonify({'error': str(e)}), 500
