@@ -318,15 +318,23 @@ function fmtN(v,dec){dec=dec||1;if(v==null||isNaN(v)||v===undefined)return'N/A';
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
 async function fh(path,key,retries){
-  retries=retries||2;
+  retries=retries||1;
   var url='/api/finnhub?path='+encodeURIComponent(path)+'&token='+key;
   for(var i=0;i<=retries;i++){
     try{
-      var r=await fetch(url);
-      if(r.status===429){await sleep(2000);continue;}
+      // 8 second timeout — if Finnhub doesn't respond, skip and move on
+      var controller=new AbortController();
+      var timeout=setTimeout(function(){controller.abort();},8000);
+      var r=await fetch(url,{signal:controller.signal});
+      clearTimeout(timeout);
+      if(r.status===429){await sleep(2500);continue;}
       if(!r.ok)throw new Error('HTTP '+r.status);
       return await r.json();
-    }catch(e){if(i===retries)throw e;await sleep(1000);}
+    }catch(e){
+      if(e.name==='AbortError'){throw new Error('Timeout — skipping');}
+      if(i===retries)throw e;
+      await sleep(800);
+    }
   }
 }
 
@@ -558,24 +566,30 @@ async function runScan(){
 
     var allSymbols2=await fh('/stock/symbol?exchange=US',key);
 
-    // CRITICAL FIX: Filter to common stocks on target exchanges first
+    // Filter to common stocks on target exchanges first
     var commonStocks=allSymbols2.filter(function(s){
       return s.type==='Common Stock'&&s.mic&&mic.some(function(m){return s.mic.includes(m);});
     });
 
-    log('Scanning '+commonStocks.length+' common stocks for micro/nano cap fundamentals...','b');
+    // Cap at 600 shuffled stocks — enough diversity without stalling
+    var shuffled=commonStocks.sort(function(){return Math.random()-0.5;}).slice(0,600);
+    log('Pipeline 2 — scanning up to '+shuffled.length+' stocks for micro/nano cap candidates...','b');
 
-    // Shuffle for diversity across the micro/nano cap universe
-    var shuffled=commonStocks.sort(function(){return Math.random()-0.5;});
     var fundamentalCount=0;
     var scanned2=0;
+    var MAX_FUNDAMENTAL=60;
 
     for(var j=0;j<shuffled.length;j++){
-      // Stop once we have enough fundamental candidates
-      if(fundamentalCount>=80)break;
+      if(fundamentalCount>=MAX_FUNDAMENTAL)break;
       var sym2=shuffled[j];
-      if(combinedPool[sym2.symbol])continue; // Skip if already in from Pipeline 1
+      if(combinedPool[sym2.symbol])continue;
       scanned2++;
+
+      // Batch delay every 10 stocks to prevent rate limiting stalls
+      if(scanned2%10===0){
+        log('Pipeline 2 — scanned '+scanned2+' | found '+fundamentalCount+' micro/nano cap stocks','b');
+        await sleep(800);
+      }
 
       try{
         var r2=await Promise.all([
@@ -589,7 +603,6 @@ async function runScan(){
 
         if(price2<0.50||vol2<minVol)continue;
 
-        // STRICT cap filter — only micro/nano
         var isNano2=mc2>2&&mc2<50;
         var isMicro2=mc2>=50&&mc2<=300;
         if(caprange==='nano'&&!isNano2)continue;
@@ -614,7 +627,7 @@ async function runScan(){
         fundamentalCount++;
         setSV('fundamental',fundamentalCount);
 
-      }catch(e){/* skip */}
+      }catch(e){/* timeout or API error — skip and continue */}
     }
 
     log('Pipeline 2 complete: '+fundamentalCount+' fundamental candidates added','b');
