@@ -517,9 +517,16 @@ async function runScan(){
           fh('/stock/profile2?symbol='+ticker,key)
         ]);
         var q=results[0];var p=results[1];
+        // Guard against null/empty responses
+        if(!q||!p||typeof q!=='object'||typeof p!=='object')continue;
         var mc=p.marketCapitalization||0;
         var price=q.c||0;
         var vol=q.v||0;
+
+        // Log what we find so we can diagnose
+        if(mc>0&&mc<1000){
+          log('P1 checking: '+ticker+' cap='+fmtCap(mc)+' price=$'+price.toFixed(2),'g');
+        }
 
         // Skip if no meaningful data returned
         if(!mc||!price)continue;
@@ -609,9 +616,12 @@ async function runScan(){
 
         batchResults.forEach(function(result){
           if(result.status!=='fulfilled')return;
-          var sym=result.value.sym;
-          var q2=result.value.q;
-          var p2=result.value.p;
+          var val=result.value;
+          if(!val||!val.q||!val.p)return;
+          var sym=val.sym;
+          var q2=val.q;
+          var p2=val.p;
+          if(typeof q2!=='object'||typeof p2!=='object')return;
           scanned2++;
 
           var mc2=p2.marketCapitalization||0;
