@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>APEX/SCAN — Micro Cap Research Engine</title>
+<title>APEX/SCAN — Value Discovery Engine</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -15,21 +15,36 @@
   --red:#ff5252;--red-dim:#ff525218;
   --blue:#448aff;--blue-dim:#448aff18;
   --cyan:#00bcd4;--cyan-dim:#00bcd418;
+  --purple:#b388ff;--purple-dim:#b388ff18;
   --text:#e8eaf0;--text2:#8892a4;--text3:#4a5568;
 }
 html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px}
-.app{max-width:960px;margin:0 auto;padding:24px 20px 60px}
-.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:0.5px solid var(--border2)}
+.app{max-width:980px;margin:0 auto;padding:24px 20px 60px}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:0.5px solid var(--border2)}
 .logo{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:var(--green);letter-spacing:.08em}
 .logo em{color:var(--text3);font-style:normal;font-weight:300}
 .hdr-right{display:flex;align-items:center;gap:10px}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 .clock{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3)}
-.free-badge{display:inline-flex;align-items:center;gap:5px;background:var(--green-dim);border:0.5px solid var(--green);border-radius:99px;padding:3px 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--green);margin-bottom:16px;letter-spacing:.05em}
+
+.philosophy{background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.philosophy-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--amber);text-transform:uppercase;margin-bottom:8px}
+.philosophy-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.phil-item{background:var(--bg3);border-radius:6px;padding:8px 10px;border:0.5px solid var(--border)}
+.phil-label{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+.phil-label.g{color:var(--green)}
+.phil-label.b{color:var(--blue)}
+.phil-label.p{color:var(--purple)}
+.phil-label.c{color:var(--cyan)}
+.phil-label.a{color:var(--amber)}
+.phil-label.r{color:var(--red)}
+.phil-desc{font-size:10px;color:var(--text3);line-height:1.4}
+
 .config{background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
-.section-label{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:12px}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+.section-label{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
 .field{display:flex;flex-direction:column;gap:5px}
 .lbl{font-size:10px;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace}
 input.fi,select.fi{width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:6px;padding:8px 11px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;outline:none;-webkit-appearance:none}
@@ -37,20 +52,24 @@ input.fi:focus,select.fi:focus{border-color:var(--green);box-shadow:0 0 0 2px va
 input.fi::placeholder{color:var(--text3)}
 .key-hint{font-size:10px;color:var(--text3);margin-top:3px}
 .key-hint a{color:var(--blue);text-decoration:none}
-.key-row{display:flex;gap:10px;align-items:flex-end;margin-bottom:16px}
+.key-row{display:flex;gap:10px;align-items:flex-end;margin-bottom:14px}
 .key-row .field{flex:1}
-.run-btn{background:var(--green);color:#000;border:none;border-radius:8px;padding:10px 24px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.06em;transition:all .15s;white-space:nowrap;min-height:44px}
+
+.run-btn{background:var(--green);color:#000;border:none;border-radius:8px;padding:12px 24px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.06em;transition:all .15s;white-space:nowrap;width:100%;margin-top:6px}
 .run-btn:hover:not(:disabled){background:#00ff88;transform:translateY(-1px)}
 .run-btn:disabled{background:var(--text3);color:var(--bg);cursor:not-allowed;transform:none}
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
+
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
 .stat{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px}
-.sv{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600}
-.sv.g{color:var(--green)}.sv.a{color:var(--amber)}.sv.r{color:var(--red)}.sv.b{color:var(--blue)}.sv.c{color:var(--cyan)}
+.sv{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600}
+.sv.g{color:var(--green)}.sv.a{color:var(--amber)}.sv.r{color:var(--red)}.sv.b{color:var(--blue)}.sv.c{color:var(--cyan)}.sv.p{color:var(--purple)}
 .sl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
-.log{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;max-height:180px;overflow-y:auto;margin-bottom:14px;display:none}
+
+.log{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;max-height:200px;overflow-y:auto;margin-bottom:14px;display:none}
 .ll{display:flex;gap:8px;padding:1.5px 0}
 .ll .ts{color:var(--text3);flex-shrink:0}
-.ll.g .m{color:var(--green)}.ll.a .m{color:var(--amber)}.ll.r .m{color:var(--red)}.ll.b .m{color:var(--blue)}.ll.c .m{color:var(--cyan)}
+.ll.g .m{color:var(--green)}.ll.a .m{color:var(--amber)}.ll.r .m{color:var(--red)}.ll.b .m{color:var(--blue)}.ll.c .m{color:var(--cyan)}.ll.p .m{color:var(--purple)}
+
 .cands{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;display:none}
 .box-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--border);background:var(--bg3)}
 .box-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.07em}
@@ -66,6 +85,15 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .micro{background:var(--blue-dim);color:var(--blue)}
 .sel{background:var(--green-dim);color:var(--green)}
 .watch{background:var(--cyan-dim);color:var(--cyan)}
+.pills{display:flex;flex-wrap:wrap;gap:3px}
+.pill{font-size:9px;padding:1px 5px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-weight:600}
+.pill.ins{background:var(--green-dim);color:var(--green)}
+.pill.rev{background:var(--blue-dim);color:var(--blue)}
+.pill.val{background:var(--purple-dim);color:var(--purple)}
+.pill.bal{background:var(--cyan-dim);color:var(--cyan)}
+.pill.mgn{background:var(--amber-dim);color:var(--amber)}
+.pill.cat{background:var(--red-dim);color:var(--red)}
+
 .packet{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;display:none;margin-bottom:14px}
 .pack-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--border);background:var(--bg3)}
 .pack-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--cyan);letter-spacing:.07em}
@@ -75,250 +103,401 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .act-btn.done{color:var(--green);border-color:var(--green)}
 .act-btn.red:hover{color:var(--red);border-color:var(--red)}
 .pack-body{padding:20px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.9;color:var(--text);white-space:pre-wrap;word-break:break-word;max-height:560px;overflow-y:auto}
-.paste-box{background:var(--green-dim);border:0.5px solid var(--green);border-radius:8px;padding:16px;display:none}
+
+.paste-box{background:var(--green-dim);border:0.5px solid var(--green);border-radius:8px;padding:16px;display:none;margin-bottom:14px}
 .paste-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--green);margin-bottom:8px}
 .paste-body{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px}
 .paste-prompt{background:var(--bg3);border:0.5px solid var(--border2);border-radius:6px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);line-height:1.8;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto}
 .paste-copy-btn{margin-top:10px;background:none;border:0.5px solid var(--green);border-radius:5px;padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;color:var(--green);letter-spacing:.04em}
 .paste-copy-btn:hover{background:var(--green-dim)}
+
 .empty{text-align:center;padding:40px 20px;color:var(--text3);font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:2}
 .empty .big{font-size:28px;margin-bottom:10px}
+
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
 @media(max-width:640px){
-  .grid3{grid-template-columns:1fr}
-  .stats{grid-template-columns:1fr 1fr}
+  .grid3,.philosophy-grid{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr 1fr}
   .key-row{flex-direction:column}
-  .run-btn{width:100%}
 }
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="hdr">
-    <div class="logo">APEX<em>/</em>SCAN <em style="color:var(--text2);font-size:12px;font-weight:300"> — micro &amp; nano cap research engine</em></div>
-    <div class="hdr-right">
-      <div class="dot"></div>
-      <div class="clock" id="clock">--:--:-- UTC</div>
+
+<div class="hdr">
+  <div class="logo">APEX<em>/</em>SCAN <em style="color:var(--text2);font-size:12px;font-weight:300"> — long-term value discovery engine</em></div>
+  <div class="hdr-right"><div class="dot"></div><div class="clock" id="clock">--:--:-- UTC</div></div>
+</div>
+
+<!-- Philosophy panel -->
+<div class="philosophy">
+  <div class="philosophy-title">Screening Philosophy — Finding overlooked companies, not day trades</div>
+  <div class="philosophy-grid">
+    <div class="phil-item">
+      <div class="phil-label g">● Insider Buying</div>
+      <div class="phil-desc">CEOs buying their own stock with their own money. The strongest signal that exists.</div>
     </div>
-  </div>
-
-  <div class="free-badge">✓ NO EXTRA AI COST — paste packet into your Claude subscription</div>
-
-  <div class="config">
-    <div class="section-label">Data Source — Finnhub (Free)</div>
-    <div class="key-row">
-      <div class="field">
-        <div class="lbl">Finnhub API Key</div>
-        <input class="fi" id="fkey" type="password" placeholder="ct_xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
-        <div class="key-hint">Free key at <a href="https://finnhub.io" target="_blank">finnhub.io</a> — no credit card required</div>
-      </div>
-      <button class="run-btn" id="run-btn" onclick="runScan()">▶ SCAN NOW</button>
+    <div class="phil-item">
+      <div class="phil-label b">◆ Revenue Growth</div>
+      <div class="phil-desc">Consistent 20%+ YoY growth across multiple quarters. Company is genuinely getting bigger.</div>
     </div>
-    <div class="section-label">Screening Filters</div>
-    <div class="grid3">
-      <div class="field">
-        <div class="lbl">Cap Range</div>
-        <select class="fi" id="caprange">
-          <option value="both">Micro + Nano ($2M–$300M)</option>
-          <option value="nano">Nano cap only (&lt;$50M)</option>
-          <option value="micro">Micro cap only ($50M–$300M)</option>
-        </select>
-      </div>
-      <div class="field">
-        <div class="lbl">Sector Focus</div>
-        <select class="fi" id="sector">
-          <option value="all">All sectors</option>
-          <option value="biotech">Biotech / Pharma</option>
-          <option value="tech">Technology</option>
-          <option value="energy">Energy / Mining</option>
-          <option value="industrial">Industrial</option>
-          <option value="consumer">Consumer</option>
-          <option value="financial">Financial</option>
-        </select>
-      </div>
-      <div class="field">
-        <div class="lbl">Pool Size</div>
-        <select class="fi" id="poolsize">
-          <option value="15">15 stocks — fast (~1 min)</option>
-          <option value="30" selected>30 stocks — balanced (~3 min)</option>
-          <option value="60">60 stocks — thorough (~6 min)</option>
-        </select>
-      </div>
-      <div class="field">
-        <div class="lbl">Min Daily Volume</div>
-        <select class="fi" id="minvol">
-          <option value="50000">50k shares</option>
-          <option value="100000" selected>100k shares</option>
-          <option value="250000">250k shares</option>
-        </select>
-      </div>
-      <div class="field">
-        <div class="lbl">Deep-Research Top</div>
-        <select class="fi" id="topn">
-          <option value="3">Top 3 candidates</option>
-          <option value="5" selected>Top 5 candidates</option>
-          <option value="8">Top 8 candidates</option>
-        </select>
-      </div>
-      <div class="field">
-        <div class="lbl">Exchange</div>
-        <select class="fi" id="exch">
-          <option value="all">NYSE + NASDAQ</option>
-          <option value="nasdaq">NASDAQ only</option>
-          <option value="nyse">NYSE / AMEX only</option>
-        </select>
-      </div>
+    <div class="phil-item">
+      <div class="phil-label p">▲ Valuation Gap</div>
+      <div class="phil-desc">Trading cheap relative to growth rate. Market hasn't priced in what's happening yet.</div>
     </div>
-  </div>
-
-  <div class="stats">
-    <div class="stat"><div class="sv b" id="sv-pool">0</div><div class="sl">Universe</div></div>
-    <div class="stat"><div class="sv" id="sv-scan">0</div><div class="sl">Screened</div></div>
-    <div class="stat"><div class="sv g" id="sv-pass">0</div><div class="sl">Candidates</div></div>
-    <div class="stat"><div class="sv c" id="sv-sel">0</div><div class="sl">Selected</div></div>
-    <div class="stat"><div class="sv" id="sv-time">—</div><div class="sl">Last Scan</div></div>
-  </div>
-
-  <div class="log" id="log"></div>
-
-  <div class="cands" id="cands">
-    <div class="box-hdr">
-      <div class="box-title" style="color:var(--cyan)">SCREENED CANDIDATES</div>
-      <div class="box-sub" id="cand-sub"></div>
+    <div class="phil-item">
+      <div class="phil-label c">■ Strong Balance Sheet</div>
+      <div class="phil-desc">Low debt, high cash, current ratio above 2. Can grow without diluting shareholders.</div>
     </div>
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr>
-          <th>Ticker</th><th>Company</th><th>Type</th><th>Price</th>
-          <th>Mkt Cap</th><th>Chg%</th><th>P/E</th><th>Rev Gr%</th>
-          <th>Gross Mgn%</th><th>Insider Buys</th><th>Status</th>
-        </tr></thead>
-        <tbody id="cand-body"></tbody>
-      </table>
+    <div class="phil-item">
+      <div class="phil-label a">▼ Improving Margins</div>
+      <div class="phil-desc">Gross and net margins expanding over time. Becoming more profitable as it scales.</div>
     </div>
-  </div>
-
-  <div class="packet" id="packet">
-    <div class="pack-hdr">
-      <div class="pack-title">RESEARCH PACKET — READY FOR CLAUDE</div>
-      <div class="btn-row">
-        <button class="act-btn" id="copy-btn" onclick="copyPacket()">⌘ COPY PACKET</button>
-        <button class="act-btn red" onclick="clearAll()">✕ CLEAR</button>
-      </div>
+    <div class="phil-item">
+      <div class="phil-label r">✕ Red Flag Filter</div>
+      <div class="phil-desc">Auto-removes dilution, going concern, reverse splits, and weak cash positions.</div>
     </div>
-    <div class="pack-body" id="pack-body"></div>
-  </div>
-
-  <div class="paste-box" id="paste-box">
-    <div class="paste-title">↑ Step 2 — Open your APEX Stock Scanner Claude Project and paste this:</div>
-    <div class="paste-body">Copy the prompt below, open a new chat in your APEX Stock Scanner Claude Project, paste it, then paste the research packet at the bottom.</div>
-    <div class="paste-prompt" id="paste-prompt"></div>
-    <button class="paste-copy-btn" onclick="copyPrompt()">⌘ COPY THIS PROMPT</button>
-  </div>
-
-  <div class="empty" id="empty">
-    <div class="big">⬡</div>
-    <div>Enter your Finnhub API key and hit Scan Now.</div>
-    <div style="margin-top:6px;color:var(--text3)">The scanner finds the stocks. Claude writes the report. You make the calls.</div>
   </div>
 </div>
 
+<div class="config">
+  <div class="section-label">Data Source — Finnhub (Free)</div>
+  <div class="key-row">
+    <div class="field">
+      <div class="lbl">Finnhub API Key</div>
+      <input class="fi" id="fkey" type="password" placeholder="ct_xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+      <div class="key-hint">Free key at <a href="https://finnhub.io" target="_blank">finnhub.io</a> — no credit card required</div>
+    </div>
+  </div>
+
+  <div class="section-label">Universe Filters</div>
+  <div class="grid3">
+    <div class="field">
+      <div class="lbl">Cap Range</div>
+      <select class="fi" id="caprange">
+        <option value="both">Micro + Nano ($2M–$300M)</option>
+        <option value="nano">Nano cap only (&lt;$50M)</option>
+        <option value="micro">Micro cap only ($50M–$300M)</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="lbl">Sector Focus</div>
+      <select class="fi" id="sector">
+        <option value="all">All sectors</option>
+        <option value="biotech">Biotech / Pharma</option>
+        <option value="tech">Technology</option>
+        <option value="energy">Energy / Mining</option>
+        <option value="industrial">Industrial</option>
+        <option value="consumer">Consumer</option>
+        <option value="financial">Financial</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="lbl">Exchange</div>
+      <select class="fi" id="exch">
+        <option value="all">NYSE + NASDAQ</option>
+        <option value="nasdaq">NASDAQ only</option>
+        <option value="nyse">NYSE / AMEX only</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="lbl">Min Daily Volume</div>
+      <select class="fi" id="minvol">
+        <option value="50000">50k shares</option>
+        <option value="100000" selected>100k shares</option>
+        <option value="250000">250k shares</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="lbl">Universe Sample</div>
+      <select class="fi" id="samplesize">
+        <option value="300">300 stocks — fast (~2 min)</option>
+        <option value="600" selected>600 stocks — balanced (~4 min)</option>
+        <option value="1200">1,200 stocks — thorough (~8 min)</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="lbl">Top Picks for Claude</div>
+      <select class="fi" id="topn">
+        <option value="3">Top 3 picks</option>
+        <option value="5" selected>Top 5 picks</option>
+        <option value="8">Top 8 picks</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section-label">Value Criteria Thresholds</div>
+  <div class="grid3">
+    <div class="field">
+      <div class="lbl">Min Revenue Growth (YoY)</div>
+      <select class="fi" id="mingrowth">
+        <option value="10">10% minimum</option>
+        <option value="20" selected>20% minimum</option>
+        <option value="30">30% minimum</option>
+        <option value="0">Any growth (0%+)</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="lbl">Min Gross Margin</div>
+      <select class="fi" id="minmargin">
+        <option value="0">Any margin</option>
+        <option value="30" selected>30% minimum</option>
+        <option value="50">50% minimum</option>
+        <option value="60">60% minimum</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="lbl">Max Debt / Equity</div>
+      <select class="fi" id="maxde">
+        <option value="0.5">0.5x maximum (very conservative)</option>
+        <option value="1.0" selected>1.0x maximum (balanced)</option>
+        <option value="2.0">2.0x maximum (lenient)</option>
+        <option value="99">No limit</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="run-btn" id="run-btn" onclick="runScan()">▶ FIND VALUE OPPORTUNITIES</button>
+</div>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat"><div class="sv b" id="sv-universe">0</div><div class="sl">Universe</div></div>
+  <div class="stat"><div class="sv" id="sv-scanned">0</div><div class="sl">Scanned</div></div>
+  <div class="stat"><div class="sv r" id="sv-rejected">0</div><div class="sl">Red Flags</div></div>
+  <div class="stat"><div class="sv g" id="sv-qualified">0</div><div class="sl">Qualified</div></div>
+  <div class="stat"><div class="sv c" id="sv-selected">0</div><div class="sl">Top Picks</div></div>
+  <div class="stat"><div class="sv" id="sv-time">—</div><div class="sl">Last Scan</div></div>
+</div>
+
+<div class="log" id="log"></div>
+
+<div class="cands" id="cands">
+  <div class="box-hdr">
+    <div class="box-title" style="color:var(--green)">VALUE OPPORTUNITIES — RANKED BY CONVICTION SCORE</div>
+    <div class="box-sub" id="cand-sub"></div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Ticker</th><th>Company</th><th>Type</th><th>Price</th><th>Cap</th>
+        <th>Rev Gr%</th><th>Gross Mgn%</th><th>D/E</th><th>Curr Ratio</th>
+        <th>Insider Buys</th><th>Why It Qualifies</th><th>Score</th><th>Status</th>
+      </tr></thead>
+      <tbody id="cand-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="packet" id="packet">
+  <div class="pack-hdr">
+    <div class="pack-title">RESEARCH PACKET — READY FOR CLAUDE</div>
+    <div class="btn-row">
+      <button class="act-btn" id="copy-btn" onclick="copyPacket()">⌘ COPY PACKET</button>
+      <button class="act-btn red" onclick="clearAll()">✕ CLEAR</button>
+    </div>
+  </div>
+  <div class="pack-body" id="pack-body"></div>
+</div>
+
+<div class="paste-box" id="paste-box">
+  <div class="paste-title">↑ Step 2 — Open your APEX Stock Scanner Claude Project and paste this:</div>
+  <div class="paste-body">These are fundamentally strong, undervalued micro/nano cap companies — not day trades. Copy the prompt below and paste it with the research packet into your Claude Project.</div>
+  <div class="paste-prompt" id="paste-prompt"></div>
+  <button class="paste-copy-btn" onclick="copyPrompt()">⌘ COPY THIS PROMPT</button>
+</div>
+
+<div class="empty" id="empty">
+  <div class="big">⬡</div>
+  <div>Configure your filters and find value opportunities.</div>
+  <div style="margin-top:6px;color:var(--text3)">We look for great companies at good prices — not noise, not momentum, not day trades.</div>
+</div>
+
+</div>
+
 <script>
-// Clock
-setInterval(() => {
-  document.getElementById('clock').textContent =
-    new Date().toUTCString().split(' ')[4] + ' UTC';
-}, 1000);
+setInterval(function(){
+  document.getElementById('clock').textContent=new Date().toUTCString().split(' ')[4]+' UTC';
+},1000);
 
-// Persist key
-const keyInput = document.getElementById('fkey');
-const saved = localStorage.getItem('apex_fkey');
-if (saved) keyInput.value = saved;
-keyInput.addEventListener('change', () => {
-  localStorage.setItem('apex_fkey', keyInput.value.trim());
-});
+var keyInput=document.getElementById('fkey');
+var saved=localStorage.getItem('apex_fkey');
+if(saved)keyInput.value=saved;
+keyInput.addEventListener('change',function(){localStorage.setItem('apex_fkey',keyInput.value.trim());});
 
-// Helpers
-function log(msg, t) {
-  t = t || 'b';
-  const b = document.getElementById('log');
-  b.style.display = 'block';
-  const d = document.createElement('div');
-  d.className = 'll ' + t;
-  d.innerHTML = '<span class="ts">' + new Date().toTimeString().slice(0,8) + '</span><span class="m">' + msg + '</span>';
-  b.appendChild(d);
-  b.scrollTop = b.scrollHeight;
+function log(msg,t){
+  t=t||'b';
+  var b=document.getElementById('log');b.style.display='block';
+  var d=document.createElement('div');d.className='ll '+t;
+  d.innerHTML='<span class="ts">'+new Date().toTimeString().slice(0,8)+'</span><span class="m">'+msg+'</span>';
+  b.appendChild(d);b.scrollTop=b.scrollHeight;
 }
-function setSV(id, v) { document.getElementById('sv-' + id).textContent = v; }
-function getPast(n) {
-  var d = new Date(); d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-}
-function fmtCap(mc) {
-  if (!mc || mc < 0.01) return 'N/A';
-  if (mc >= 1000) return '$' + (mc / 1000).toFixed(1) + 'B';
-  return '$' + mc.toFixed(0) + 'M';
-}
-function fmtPct(v) {
-  if (v == null || isNaN(v)) return '—';
-  return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
-}
-function fmtN(v, dec) {
-  dec = dec || 1;
-  if (v == null || isNaN(v) || v === undefined) return 'N/A';
-  return Number(v).toFixed(dec);
-}
-function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+function setSV(id,v){document.getElementById('sv-'+id).textContent=v;}
+function getPast(n){var d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
+function fmtCap(mc){if(!mc||mc<0.01)return'N/A';if(mc>=1000)return'$'+(mc/1000).toFixed(1)+'B';return'$'+mc.toFixed(0)+'M';}
+function fmtPct(v){if(v==null||isNaN(v))return'—';return(v>0?'+':'')+v.toFixed(2)+'%';}
+function fmtN(v,dec){dec=dec||1;if(v==null||isNaN(v)||v===undefined)return'N/A';return Number(v).toFixed(dec);}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
-// Proxy fetch — routes through our Render backend to avoid CORS
-async function fh(path, key, retries) {
-  retries = retries || 2;
-  var encodedPath = encodeURIComponent(path);
-  var url = '/api/finnhub?path=' + encodedPath + '&token=' + key;
-  for (var i = 0; i <= retries; i++) {
-    try {
-      var r = await fetch(url);
-      if (r.status === 429) { await sleep(1500); continue; }
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+async function fh(path,key,retries){
+  retries=retries||2;
+  var url='/api/finnhub?path='+encodeURIComponent(path)+'&token='+key;
+  for(var i=0;i<=retries;i++){
+    try{
+      var r=await fetch(url);
+      if(r.status===429){await sleep(2000);continue;}
+      if(!r.ok)throw new Error('HTTP '+r.status);
       return await r.json();
-    } catch(e) {
-      if (i === retries) throw e;
-      await sleep(800);
+    }catch(e){
+      if(i===retries)throw e;
+      await sleep(1000);
     }
   }
 }
 
+// ─── VALUE SCORING ENGINE ─────────────────────────────────
+// This scores companies on long-term fundamentals, NOT short-term price action
+function scoreForValue(c, minGrowth, minMargin, maxDE) {
+  var m = c.m || {};
+  var reasons = [];
+  var score = 0;
+  var redFlags = [];
+
+  // ── RED FLAG CHECKS — auto disqualify ──────────────────
+  // Going concern or near-zero cash
+  var cr = m.currentRatioQuarterly || 0;
+  if (cr < 1.0 && cr > 0) { redFlags.push('Low current ratio (' + cr.toFixed(1) + ')'); }
+
+  // Excessive debt
+  var de = m['totalDebt/totalEquityQuarterly'];
+  if (de != null && de > maxDE) { redFlags.push('High D/E (' + de.toFixed(1) + 'x)'); }
+
+  // Negative or tiny revenue — likely shell
+  var revGr = m.revenueGrowthTTMYoy;
+  if (revGr != null && revGr < -30) { redFlags.push('Revenue collapsing (' + revGr.toFixed(0) + '%)'); }
+
+  // If too many hard red flags, reject
+  if (redFlags.length >= 2) {
+    c.redFlags = redFlags;
+    c.score = 0;
+    c.reasons = [];
+    return false;
+  }
+
+  // ── POSITIVE SCORING ───────────────────────────────────
+
+  // 1. INSIDER BUYING — strongest long-term signal
+  var buys = (c.ins||[]).filter(function(i){
+    return (i.transactionType||'').toLowerCase().includes('buy');
+  });
+  if (buys.length > 0) {
+    score += buys.length * 25;
+    reasons.push('ins');
+    log(c.sym + ' — insider buying: ' + buys.length + ' transaction(s)', 'g');
+  }
+
+  // 2. REVENUE GROWTH — company is genuinely growing
+  if (revGr != null && revGr >= minGrowth) {
+    score += 20;
+    if (revGr >= 40) score += 10;
+    if (revGr >= 75) score += 10;
+    if (revGr >= 100) score += 10;
+    reasons.push('rev');
+  } else if (minGrowth > 0 && (revGr == null || revGr < minGrowth)) {
+    // Doesn't meet growth threshold — partial rejection
+    score -= 10;
+  }
+
+  // 3. GROSS MARGIN — quality of the business model
+  var gm = m.grossMarginTTM || 0;
+  if (gm >= minMargin) {
+    score += 15;
+    if (gm >= 50) score += 10;
+    if (gm >= 70) score += 10;
+    reasons.push('mgn');
+  }
+
+  // 4. BALANCE SHEET STRENGTH — can grow without dilution
+  if (de != null && de < 0.5 && cr >= 2) {
+    score += 20;
+    reasons.push('bal');
+  } else if (de != null && de < 1.0 && cr >= 1.5) {
+    score += 10;
+    reasons.push('bal');
+  }
+
+  // 5. VALUATION — cheap relative to growth (PEG-like logic)
+  var pe = m.peExclExtraTTM;
+  var ps = m.psTTM;
+  if (pe != null && pe > 0 && pe < 20 && revGr > 20) {
+    score += 20; // Growing fast but trading cheaply
+    reasons.push('val');
+  } else if (ps != null && ps > 0 && ps < 3 && revGr > 20) {
+    score += 15;
+    reasons.push('val');
+  }
+
+  // 6. PROFITABILITY — actually making money
+  var npm = m.netProfitMarginTTM || 0;
+  var roe = m.roeTTM || 0;
+  if (npm > 5) { score += 10; }
+  if (npm > 15) { score += 10; }
+  if (roe > 10) { score += 8; }
+  if (roe > 20) { score += 8; }
+
+  // 7. RECENT NEWS CATALYST — something happening
+  var recentNews = (c.news||[]).length;
+  if (recentNews >= 3) {
+    score += 8;
+    reasons.push('cat');
+  }
+
+  // 8. MULTI-SIGNAL BONUS — conviction multiplier
+  if (reasons.length >= 3) score += 15;
+  if (reasons.length >= 4) score += 20;
+  if (reasons.includes('ins') && reasons.includes('rev')) score += 25; // Best combo
+
+  c.score = score;
+  c.reasons = reasons;
+  c.redFlags = redFlags;
+
+  // Must hit minimum threshold to qualify
+  return score >= 30 && reasons.length >= 1;
+}
+
 async function runScan() {
   var key = document.getElementById('fkey').value.trim();
-  if (!key) {
-    alert('Please enter your Finnhub API key.\nGet one free at finnhub.io');
-    return;
-  }
+  if (!key) { alert('Please enter your Finnhub API key.'); return; }
   localStorage.setItem('apex_fkey', key);
 
   var btn = document.getElementById('run-btn');
-  btn.disabled = true; btn.textContent = '⏳ SCANNING...';
+  btn.disabled = true; btn.textContent = '⏳ SCANNING FOR VALUE...';
   document.getElementById('empty').style.display = 'none';
   document.getElementById('log').innerHTML = '';
   document.getElementById('log').style.display = 'block';
   document.getElementById('cands').style.display = 'none';
   document.getElementById('packet').style.display = 'none';
   document.getElementById('paste-box').style.display = 'none';
-  ['pool','scan','pass','sel'].forEach(function(k) { setSV(k, 0); });
+  ['universe','scanned','rejected','qualified','selected'].forEach(function(k){setSV(k,0);});
   document.getElementById('sv-time').textContent = '—';
 
-  var caprange = document.getElementById('caprange').value;
-  var sector   = document.getElementById('sector').value;
-  var poolSize = parseInt(document.getElementById('poolsize').value);
-  var minVol   = parseInt(document.getElementById('minvol').value);
-  var topN     = parseInt(document.getElementById('topn').value);
-  var exch     = document.getElementById('exch').value;
-  var date     = new Date().toDateString();
+  var caprange   = document.getElementById('caprange').value;
+  var sector     = document.getElementById('sector').value;
+  var exch       = document.getElementById('exch').value;
+  var minVol     = parseInt(document.getElementById('minvol').value);
+  var sampleSize = parseInt(document.getElementById('samplesize').value);
+  var topN       = parseInt(document.getElementById('topn').value);
+  var minGrowth  = parseInt(document.getElementById('mingrowth').value);
+  var minMargin  = parseInt(document.getElementById('minmargin').value);
+  var maxDE      = parseFloat(document.getElementById('maxde').value);
+  var date       = new Date().toDateString();
 
   var sectorMap = {
     biotech:    ['biotech','pharma','life sci','drug','medic','therapeut','genomic','clinical'],
-    tech:       ['tech','software','semi','cloud','data','cyber','machine','saas','internet'],
+    tech:       ['tech','software','semi','cloud','data','cyber','machine','saas','internet','ai '],
     energy:     ['energy','oil','gas','mining','metal','resource','lithium','uranium','coal'],
     industrial: ['industrial','manufactur','construct','transport','defense','aerospace','logistics'],
     consumer:   ['consumer','retail','food','bever','apparel','restaurant','hospitality'],
@@ -326,46 +505,41 @@ async function runScan() {
   };
 
   try {
-    log('Connecting to Finnhub via secure proxy...', 'b');
+    log('Fetching US stock universe...', 'b');
     var symbols;
     try {
       symbols = await fh('/stock/symbol?exchange=US', key);
     } catch(e) {
-      log('Failed to fetch universe: ' + e.message, 'r');
-      log('Check that your Finnhub API key is correct and active.', 'a');
-      btn.disabled = false; btn.textContent = '▶ SCAN NOW';
+      log('Failed: ' + e.message, 'r');
+      btn.disabled=false; btn.textContent='▶ FIND VALUE OPPORTUNITIES';
       return;
     }
 
-    var mic = exch === 'nasdaq' ? ['XNAS'] :
-              exch === 'nyse'   ? ['XNYS','XASE'] :
-                                  ['XNAS','XNYS','XASE'];
-
-    var common = symbols.filter(function(s) {
-      return s.type === 'Common Stock' && s.mic && mic.some(function(m) { return s.mic.includes(m); });
+    var mic = exch==='nasdaq'?['XNAS']:exch==='nyse'?['XNYS','XASE']:['XNAS','XNYS','XASE'];
+    var common = symbols.filter(function(s){
+      return s.type==='Common Stock' && s.mic && mic.some(function(m){return s.mic.includes(m);});
     });
+    log('Universe: '+common.length.toLocaleString()+' common stocks', 'g');
+    setSV('universe', common.length.toLocaleString());
 
-    log('Universe: ' + common.length.toLocaleString() + ' common stocks found', 'g');
-    setSV('pool', common.length.toLocaleString());
+    var sample = common.sort(function(){return Math.random()-0.5;}).slice(0,sampleSize);
+    log('Scanning '+sample.length+' stocks for fundamentals...', 'b');
 
-    var sample = common.sort(function() { return Math.random() - 0.5; }).slice(0, poolSize * 10);
-    log('Sampling ' + sample.length + ' stocks through filters...', 'b');
-
-    var candidates = [];
-    var checked = 0;
+    var passed = [];
+    var rejected = 0;
+    var scanned = 0;
 
     for (var i = 0; i < sample.length; i++) {
-      if (candidates.length >= poolSize) break;
       var sym = sample[i];
-      checked++;
-      setSV('scan', checked);
+      scanned++;
+      setSV('scanned', scanned);
 
       try {
         var results = await Promise.all([
-          fh('/quote?symbol=' + sym.symbol, key),
-          fh('/stock/profile2?symbol=' + sym.symbol, key)
+          fh('/quote?symbol='+sym.symbol, key),
+          fh('/stock/profile2?symbol='+sym.symbol, key)
         ]);
-        var quote = results[0];
+        var quote   = results[0];
         var profile = results[1];
 
         var mc    = profile.marketCapitalization || 0;
@@ -376,227 +550,241 @@ async function runScan() {
 
         var isNano  = mc > 2 && mc < 50;
         var isMicro = mc >= 50 && mc <= 300;
-        if (caprange === 'nano'  && !isNano)  continue;
-        if (caprange === 'micro' && !isMicro) continue;
-        if (caprange === 'both'  && !isNano && !isMicro) continue;
+        if (caprange==='nano'  && !isNano)  continue;
+        if (caprange==='micro' && !isMicro) continue;
+        if (caprange==='both'  && !isNano && !isMicro) continue;
 
         if (sector !== 'all') {
-          var ind = (profile.finnhubIndustry || '').toLowerCase();
-          var keys = sectorMap[sector] || [];
-          if (!keys.some(function(k) { return ind.includes(k); })) continue;
+          var ind = (profile.finnhubIndustry||'').toLowerCase();
+          var keys = sectorMap[sector]||[];
+          if (!keys.some(function(k){return ind.includes(k);})) continue;
         }
 
-        candidates.push({
+        passed.push({
           sym: sym.symbol,
-          name: profile.name || sym.description || sym.symbol,
+          name: profile.name || sym.symbol,
           ind: profile.finnhubIndustry || 'N/A',
-          mc: mc, price: price,
+          mc, price,
           chg: quote.dp || 0,
-          vol: vol,
+          vol,
           type: isNano ? 'nano' : 'micro',
-          exch: profile.exchange || ''
+          exch: profile.exchange || '',
+          m: {}, ins: [], news: [], score: 0, reasons: [], redFlags: []
         });
-
-        if (candidates.length % 5 === 0)
-          log(candidates.length + ' qualifying candidates found...', 'g');
 
       } catch(e) { /* skip */ }
     }
 
-    setSV('pass', candidates.length);
-    log('Filter pass complete — ' + candidates.length + ' stocks qualify', 'g');
+    log('Cap/volume filter: '+passed.length+' stocks qualify — fetching fundamentals...', 'a');
 
-    if (!candidates.length) {
-      log('No candidates passed filters. Try relaxing your settings.', 'a');
-      btn.disabled = false; btn.textContent = '▶ SCAN NOW';
+    if (!passed.length) {
+      log('No stocks passed basic filters. Try relaxing criteria.', 'a');
+      btn.disabled=false; btn.textContent='▶ FIND VALUE OPPORTUNITIES';
       return;
     }
 
-    candidates.sort(function(a,b) { return Math.abs(b.chg) - Math.abs(a.chg); });
-    var forDeep = candidates.slice(0, Math.min(topN * 4, candidates.length));
+    // Deep fundamentals fetch on all passing stocks
+    var qualified = [];
 
-    log('Fetching deep fundamentals for top ' + forDeep.length + ' candidates...', 'b');
-    var enriched = [];
-
-    for (var j = 0; j < forDeep.length; j++) {
-      var c = forDeep[j];
+    for (var j = 0; j < passed.length; j++) {
+      var c = passed[j];
       try {
         var deep = await Promise.all([
-          fh('/stock/metric?symbol=' + c.sym + '&metric=all', key),
-          fh('/stock/insider-transactions?symbol=' + c.sym, key),
-          fh('/company-news?symbol=' + c.sym + '&from=' + getPast(14) + '&to=' + getPast(0), key)
+          fh('/stock/metric?symbol='+c.sym+'&metric=all', key),
+          fh('/stock/insider-transactions?symbol='+c.sym, key),
+          fh('/company-news?symbol='+c.sym+'&from='+getPast(30)+'&to='+getPast(0), key)
         ]);
         c.m    = deep[0].metric || {};
-        c.ins  = (deep[1].data || []).slice(0, 6);
-        c.news = (deep[2] || []).slice(0, 6);
+        c.ins  = (deep[1].data||[]).slice(0,8);
+        c.news = (deep[2]||[]).slice(0,6);
 
-        var score = 0;
-        var buys = (c.ins || []).filter(function(i) {
-          return (i.transactionType || '').toLowerCase().includes('buy');
-        }).length;
-        if (buys > 0) score += buys * 15;
-        var revGr = c.m.revenueGrowthTTMYoy || 0;
-        if (revGr > 15)  score += 15;
-        if (revGr > 40)  score += 15;
-        if (revGr > 80)  score += 10;
-        var gm = c.m.grossMarginTTM || 0;
-        if (gm > 40) score += 10;
-        if (gm > 60) score += 10;
-        var de = c.m['totalDebt/totalEquityQuarterly'] || 99;
-        if (de < 0.5)  score += 15;
-        else if (de < 1) score += 8;
-        if (Math.abs(c.chg) > 3 && Math.abs(c.chg) < 15) score += 8;
-        var cr = c.m.currentRatioQuarterly || 0;
-        if (cr > 2) score += 8;
-        c.score = score;
-        enriched.push(c);
-        log(c.sym + ' — $' + c.price.toFixed(2) + ' | ' + fmtCap(c.mc) + ' | score ' + score, 'g');
+        var qualifies = scoreForValue(c, minGrowth, minMargin, maxDE);
+
+        if (qualifies) {
+          qualified.push(c);
+          setSV('qualified', qualified.length);
+        } else {
+          rejected++;
+          setSV('rejected', rejected);
+        }
+
       } catch(e) {
-        c.m = {}; c.ins = []; c.news = []; c.score = 0;
-        enriched.push(c);
+        c.m={}; c.ins=[]; c.news=[]; c.score=0; c.reasons=[]; c.redFlags=[];
+        rejected++;
+        setSV('rejected', rejected);
       }
     }
 
-    enriched.sort(function(a,b) { return b.score - a.score; });
-    var selected = enriched.slice(0, topN);
-    setSV('sel', selected.length);
-    log('Selected top ' + selected.length + ' for your Claude research packet', 'g');
+    if (!qualified.length) {
+      log('No stocks passed value scoring. Try relaxing growth or margin thresholds.', 'a');
+      btn.disabled=false; btn.textContent='▶ FIND VALUE OPPORTUNITIES';
+      return;
+    }
 
-    renderTable(enriched, selected.map(function(s) { return s.sym; }));
+    qualified.sort(function(a,b){return b.score-a.score;});
+    var selected = qualified.slice(0, topN);
+    setSV('selected', selected.length);
 
-    log('Building research packet...', 'b');
-    var packetText = buildPacket(selected, date, sector, caprange);
+    log('Value scan complete. Found '+qualified.length+' qualified companies.', 'g');
+    log('Top picks: '+selected.map(function(c){return c.sym+'('+c.score+'pts)';}).join(', '), 'g');
+
+    renderTable(qualified, selected.map(function(s){return s.sym;}));
+
+    var packetText = buildPacket(selected, date, sector, caprange, minGrowth, minMargin, maxDE);
     document.getElementById('pack-body').textContent = packetText;
     document.getElementById('packet').style.display = 'block';
     document.getElementById('paste-prompt').textContent = buildPastePrompt();
     document.getElementById('paste-box').style.display = 'block';
     document.getElementById('sv-time').textContent = new Date().toTimeString().slice(0,5);
-    log('✓ Scan complete. Hit COPY PACKET then paste into your Claude Project.', 'g');
+    log('Done. Copy the packet and paste into your Claude Project.', 'g');
 
   } catch(e) {
-    log('Unexpected error: ' + e.message, 'r');
+    log('Error: '+e.message, 'r');
   }
 
-  btn.disabled = false; btn.textContent = '▶ SCAN NOW';
+  btn.disabled=false; btn.textContent='▶ FIND VALUE OPPORTUNITIES';
 }
 
-function renderTable(enriched, selSyms) {
+function renderTable(qualified, selSyms) {
   var tbody = document.getElementById('cand-body');
   tbody.innerHTML = '';
-  enriched.forEach(function(c) {
+  qualified.forEach(function(c) {
     var isSel = selSyms.includes(c.sym);
-    var buys = (c.ins || []).filter(function(i) {
-      return (i.transactionType || '').toLowerCase().includes('buy');
-    }).length;
-    var chgCol = c.chg > 0 ? 'var(--green)' : c.chg < 0 ? 'var(--red)' : 'var(--text2)';
+    var buys = (c.ins||[]).filter(function(i){return (i.transactionType||'').toLowerCase().includes('buy');}).length;
+    var pillMap = {ins:'INSIDER BUY',rev:'REV GROWTH',val:'UNDERVALUED',bal:'STRONG BAL',mgn:'HIGH MARGIN',cat:'CATALYST'};
+    var pillClass = {ins:'ins',rev:'rev',val:'val',bal:'bal',mgn:'mgn',cat:'cat'};
+    var pills = (c.reasons||[]).map(function(r){
+      return '<span class="pill '+pillClass[r]+'">'+pillMap[r]+'</span>';
+    }).join('');
+    var de = c.m ? c.m['totalDebt/totalEquityQuarterly'] : null;
+    var cr = c.m ? c.m.currentRatioQuarterly : null;
     var tr = document.createElement('tr');
     tr.innerHTML =
-      '<td style="color:var(--text);font-weight:500">' + c.sym + '</td>' +
-      '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">' + c.name + '</td>' +
-      '<td><span class="badge ' + c.type + '">' + c.type.toUpperCase() + '</span></td>' +
-      '<td>$' + c.price.toFixed(2) + '</td>' +
-      '<td>' + fmtCap(c.mc) + '</td>' +
-      '<td style="color:' + chgCol + '">' + fmtPct(c.chg) + '</td>' +
-      '<td>' + fmtN(c.m ? c.m.peExclExtraTTM : null) + '</td>' +
-      '<td>' + fmtN(c.m ? c.m.revenueGrowthTTMYoy : null) + '%</td>' +
-      '<td>' + fmtN(c.m ? c.m.grossMarginTTM : null) + '%</td>' +
-      '<td style="color:' + (buys > 0 ? 'var(--green)' : 'var(--text3)') + '">' + (buys > 0 ? buys + ' buy' + (buys > 1 ? 's' : '') : '—') + '</td>' +
-      '<td><span class="badge ' + (isSel ? 'sel' : 'watch') + '">' + (isSel ? 'SELECTED' : 'WATCH') + '</span></td>';
+      '<td style="color:var(--text);font-weight:600">'+c.sym+'</td>'+
+      '<td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">'+c.name+'</td>'+
+      '<td><span class="badge '+c.type+'">'+c.type.toUpperCase()+'</span></td>'+
+      '<td>$'+c.price.toFixed(2)+'</td>'+
+      '<td>'+fmtCap(c.mc)+'</td>'+
+      '<td style="color:var(--green)">'+fmtN(c.m?c.m.revenueGrowthTTMYoy:null)+'%</td>'+
+      '<td>'+fmtN(c.m?c.m.grossMarginTTM:null)+'%</td>'+
+      '<td>'+fmtN(de,2)+'</td>'+
+      '<td>'+fmtN(cr,2)+'</td>'+
+      '<td style="color:'+(buys>0?'var(--green)':'var(--text3)')+'">'+
+        (buys>0?buys+' buy'+(buys>1?'s':''):'—')+'</td>'+
+      '<td><div class="pills">'+pills+'</div></td>'+
+      '<td style="color:var(--amber);font-weight:600">'+c.score+'</td>'+
+      '<td><span class="badge '+(isSel?'sel':'watch')+'">'+(isSel?'TOP PICK':'WATCH')+'</span></td>';
     tbody.appendChild(tr);
   });
-  document.getElementById('cand-sub').textContent = enriched.length + ' enriched | ' + selSyms.length + ' selected for Claude';
+  document.getElementById('cand-sub').textContent =
+    qualified.length+' value opportunities found | top '+selSyms.length+' selected for deep research';
   document.getElementById('cands').style.display = 'block';
 }
 
-function buildPacket(selected, date, sector, caprange) {
+function buildPacket(selected, date, sector, caprange, minGrowth, minMargin, maxDE) {
   var out = '════════════════════════════════════════════════════════\n';
-  out += 'APEX/SCAN — DAILY RESEARCH PACKET\n';
-  out += 'Date: ' + date + '\n';
-  out += 'Sector: ' + sector.toUpperCase() + ' | Cap Range: ' + caprange.toUpperCase() + ' | Stocks: ' + selected.length + '\n';
+  out += 'APEX/SCAN — LONG-TERM VALUE RESEARCH PACKET\n';
+  out += 'Date: '+date+'\n';
+  out += 'Sector: '+sector.toUpperCase()+' | Cap: '+caprange.toUpperCase()+' | Picks: '+selected.length+'\n';
+  out += 'Criteria: '+minGrowth+'%+ revenue growth | '+minMargin+'%+ gross margin | D/E under '+maxDE+'x\n';
   out += '════════════════════════════════════════════════════════\n\n';
+  out += 'INVESTMENT PHILOSOPHY:\n';
+  out += 'These are NOT day trades. These are fundamentally strong, undervalued\n';
+  out += 'micro/nano cap companies with 6-24 month holding horizons in mind.\n';
+  out += 'Every company below passed strict value criteria — insider buying,\n';
+  out += 'revenue growth, balance sheet strength, and valuation gap analysis.\n\n';
 
-  selected.forEach(function(c) {
+  var reasonLabels = {ins:'Insider Buying Detected',rev:'Strong Revenue Growth',val:'Valuation Gap',bal:'Strong Balance Sheet',mgn:'High Gross Margin',cat:'Recent Catalyst Activity'};
+
+  selected.forEach(function(c, idx) {
     var m = c.m || {};
-    var buys  = (c.ins || []).filter(function(i) { return (i.transactionType||'').toLowerCase().includes('buy'); });
-    var sells = (c.ins || []).filter(function(i) { return (i.transactionType||'').toLowerCase().includes('sell'); });
-    var newsLines = (c.news || []).map(function(n, i) {
-      return '  ' + (i+1) + '. [' + new Date((n.datetime||0)*1000).toLocaleDateString() + '] ' + n.headline + '\n     Source: ' + (n.source||'N/A') + ' — ' + (n.url||'N/A');
-    }).join('\n') || '  No recent headlines found.';
+    var buys  = (c.ins||[]).filter(function(i){return (i.transactionType||'').toLowerCase().includes('buy');});
+    var sells = (c.ins||[]).filter(function(i){return (i.transactionType||'').toLowerCase().includes('sell');});
+    var newsLines = (c.news||[]).map(function(n,i){
+      return '  '+(i+1)+'. ['+new Date((n.datetime||0)*1000).toLocaleDateString()+'] '+n.headline+
+             '\n     Source: '+(n.source||'N/A')+' — '+(n.url||'N/A');
+    }).join('\n') || '  No recent news found.';
 
     out += '────────────────────────────────────────────────────────\n';
-    out += 'TICKER: ' + c.sym + '\n';
-    out += 'Company: ' + c.name + '\n';
-    out += 'Type: ' + c.type.toUpperCase() + ' CAP | Industry: ' + c.ind + ' | Exchange: ' + c.exch + '\n\n';
-    out += '── PRICE & MARKET DATA ──────────────────────────────────\n';
-    out += 'Current Price:          $' + c.price.toFixed(2) + '\n';
-    out += 'Market Cap:             ' + fmtCap(c.mc) + '\n';
-    out += "Today's Change:         " + fmtPct(c.chg) + '\n';
-    out += 'Volume Today:           ' + c.vol.toLocaleString() + ' shares\n\n';
+    out += 'RANK #'+(idx+1)+' — TICKER: '+c.sym+' (Conviction Score: '+c.score+'/100+)\n';
+    out += 'Company: '+c.name+'\n';
+    out += 'Type: '+c.type.toUpperCase()+' CAP | Industry: '+c.ind+' | Exchange: '+c.exch+'\n';
+    out += 'WHY IT QUALIFIED: '+(c.reasons||[]).map(function(r){return reasonLabels[r]||r;}).join(' + ')+'\n\n';
+
+    out += '── PRICE & MARKET ───────────────────────────────────────\n';
+    out += 'Current Price:          $'+c.price.toFixed(2)+'\n';
+    out += 'Market Cap:             '+fmtCap(c.mc)+'\n';
+    out += 'Volume Today:           '+c.vol.toLocaleString()+' shares\n\n';
+
+    out += '── GROWTH & PROFITABILITY ───────────────────────────────\n';
+    out += 'Revenue Growth YoY:     '+fmtN(m.revenueGrowthTTMYoy)+'%\n';
+    out += 'Gross Margin:           '+fmtN(m.grossMarginTTM)+'%\n';
+    out += 'Net Profit Margin:      '+fmtN(m.netProfitMarginTTM)+'%\n';
+    out += 'Return on Equity:       '+fmtN(m.roeTTM)+'%\n\n';
+
     out += '── VALUATION ────────────────────────────────────────────\n';
-    out += 'P/E Ratio (TTM):        ' + fmtN(m.peExclExtraTTM) + '\n';
-    out += 'Price/Book:             ' + fmtN(m.pbQuarterly, 2) + '\n';
-    out += 'Price/Sales (TTM):      ' + fmtN(m.psTTM, 2) + '\n\n';
-    out += '── FUNDAMENTALS ─────────────────────────────────────────\n';
-    out += 'Revenue Growth YoY:     ' + fmtN(m.revenueGrowthTTMYoy) + '%\n';
-    out += 'Gross Margin:           ' + fmtN(m.grossMarginTTM) + '%\n';
-    out += 'Net Profit Margin:      ' + fmtN(m.netProfitMarginTTM) + '%\n';
-    out += 'Return on Equity:       ' + fmtN(m.roeTTM) + '%\n';
-    out += 'Debt / Equity:          ' + fmtN(m['totalDebt/totalEquityQuarterly'], 2) + '\n';
-    out += 'Current Ratio:          ' + fmtN(m.currentRatioQuarterly, 2) + '\n\n';
-    out += '── PERFORMANCE ──────────────────────────────────────────\n';
-    out += '52-Week Return:         ' + fmtN(m['52WeekPriceReturnDaily']) + '%\n';
-    out += '52-Week High:           $' + fmtN(m['52WeekHigh'], 2) + '\n';
-    out += '52-Week Low:            $' + fmtN(m['52WeekLow'], 2) + '\n';
-    out += 'Beta:                   ' + fmtN(m.beta, 2) + '\n\n';
-    out += '── INSIDER TRANSACTIONS (last 90 days) ──────────────────\n';
-    out += 'Buys:  ' + buys.length + ' transaction' + (buys.length !== 1 ? 's' : '') + '\n';
-    out += (buys.length ? buys.map(function(b) { return '  → ' + (b.name||'Unknown') + ' bought ' + (b.share||0).toLocaleString() + ' shares on ' + (b.transactionDate||'N/A'); }).join('\n') : '  None recorded') + '\n';
-    out += 'Sells: ' + sells.length + ' transaction' + (sells.length !== 1 ? 's' : '') + '\n';
-    out += (sells.length ? sells.map(function(s) { return '  → ' + (s.name||'Unknown') + ' sold ' + (s.share||0).toLocaleString() + ' shares on ' + (s.transactionDate||'N/A'); }).join('\n') : '  None recorded') + '\n\n';
-    out += '── RECENT NEWS (last 14 days) ───────────────────────────\n';
-    out += newsLines + '\n\n';
+    out += 'P/E Ratio (TTM):        '+fmtN(m.peExclExtraTTM)+'\n';
+    out += 'Price/Book:             '+fmtN(m.pbQuarterly,2)+'\n';
+    out += 'Price/Sales (TTM):      '+fmtN(m.psTTM,2)+'\n\n';
+
+    out += '── BALANCE SHEET HEALTH ─────────────────────────────────\n';
+    out += 'Debt / Equity:          '+fmtN(m['totalDebt/totalEquityQuarterly'],2)+'\n';
+    out += 'Current Ratio:          '+fmtN(m.currentRatioQuarterly,2)+'\n\n';
+
+    out += '── PERFORMANCE HISTORY ──────────────────────────────────\n';
+    out += '52-Week Return:         '+fmtN(m['52WeekPriceReturnDaily'])+'%\n';
+    out += '52-Week High:           $'+fmtN(m['52WeekHigh'],2)+'\n';
+    out += '52-Week Low:            $'+fmtN(m['52WeekLow'],2)+'\n';
+    out += 'Beta:                   '+fmtN(m.beta,2)+'\n\n';
+
+    out += '── INSIDER ACTIVITY (last 90 days) ──────────────────────\n';
+    out += 'Buys:  '+buys.length+' transaction'+(buys.length!==1?'s':'')+'\n';
+    out += (buys.length?buys.map(function(b){
+      return '  → '+( b.name||'Unknown')+' bought '+(b.share||0).toLocaleString()+' shares on '+(b.transactionDate||'N/A');
+    }).join('\n'):'  None on record')+'\n';
+    out += 'Sells: '+sells.length+' transaction'+(sells.length!==1?'s':'')+'\n';
+    out += (sells.length?sells.map(function(s){
+      return '  → '+(s.name||'Unknown')+' sold '+(s.share||0).toLocaleString()+' shares on '+(s.transactionDate||'N/A');
+    }).join('\n'):'  None on record')+'\n\n';
+
+    out += '── RECENT NEWS & CATALYSTS (last 30 days) ───────────────\n';
+    out += newsLines+'\n\n';
   });
 
   out += '════════════════════════════════════════════════════════\n';
   out += 'END OF RESEARCH PACKET\n';
-  out += 'Generated: ' + new Date().toUTCString() + '\n';
-  out += 'Source: Finnhub.io live market data via APEX/SCAN\n';
+  out += 'Generated: '+new Date().toUTCString()+'\n';
+  out += 'Source: Finnhub.io live data | APEX/SCAN Value Engine\n';
   out += '════════════════════════════════════════════════════════';
   return out;
 }
 
 function buildPastePrompt() {
-  return 'I am sending you today\'s APEX/SCAN research packet — pre-screened micro and nano cap stocks from live market data.\n\nFor each stock:\n1. Use web search to research in depth — SEC EDGAR 10-K/10-Q/8-K filings, recent news, earnings transcripts, analyst coverage, short interest, Reddit/StockTwits sentiment, and upcoming catalysts.\n2. Cross-reference online findings with the live data provided.\n3. Apply gap analysis: coverage gap, valuation gap, narrative gap, technical gap, liquidity gap.\n4. Auto-disqualify: reverse splits, going concern, excessive dilution, auditor changes, SEC investigations.\n5. Write the full Daily Report in the format specified in your project instructions.\n\nBe brutally honest. Flag weak data. Never hype. Never speculate without a source.\n\nHere is today\'s research packet:\n\n[PASTE PACKET HERE]';
+  return 'I am sending you a long-term value investing research packet. These are NOT day trade candidates. These are micro and nano cap companies that passed strict fundamental screening — insider buying, revenue growth, balance sheet strength, and valuation gap criteria.\n\nThis is a 6-24 month holding horizon strategy. We are looking for overlooked, undervalued companies that the market has not yet discovered or properly priced.\n\nFor each company in the packet:\n\n1. Use web search to research deeply:\n   - SEC EDGAR: latest 10-K, 10-Q, and all 8-K filings\n   - Management team: who is running this company, track record\n   - Competitive landscape: who are the competitors, is this company winning market share\n   - Earnings call transcripts: what is management saying about growth\n   - Analyst coverage: how many analysts cover it, what are their targets\n   - Short interest: is there a significant short thesis to consider\n   - Recent press releases and news\n   - Reddit and StockTwits sentiment\n   - Any upcoming catalysts: new contracts, product launches, regulatory approvals\n\n2. Answer the key long-term investor questions:\n   - Is this business model durable and defensible?\n   - Can this company grow for 3-5 more years at this rate?\n   - Is management trustworthy and aligned with shareholders?\n   - What is the realistic price target in 12-24 months?\n   - What could go wrong — be specific and honest\n\n3. Apply gap analysis:\n   - Coverage gap: underfollowed by Wall Street\n   - Valuation gap: cheap relative to growth\n   - Narrative gap: market has not priced in a major development\n\n4. Auto-disqualify if you find:\n   - Reverse stock splits in last 5 years\n   - Going concern opinion\n   - Share dilution over 20% in any single year\n   - Auditor changes without explanation\n   - SEC investigation or enforcement\n   - No real operating business\n\n5. Write a full long-term investment report:\n\n════════════════════════════════════════════════\nAPEX/SCAN — LONG-TERM VALUE REPORT\n[DATE]\n════════════════════════════════════════════════\n\nMARKET CONTEXT\n[2-3 sentences: current macro environment and how it affects micro/nano cap value investing]\n\n════════════════════════════════════════════════\nTOP CONVICTION BUY\n════════════════════════════════════════════════\nTICKER: [X] | COMPANY: [Name] | SECTOR: [Sector]\nCAP: $XXM | PRICE: $XX.XX | TYPE: [Micro/Nano]\n\nWHY THIS COMPANY: [2-3 sentences on the core business and why it is undervalued]\nTHE OPPORTUNITY: [What gap exists — why has the market not priced this in yet]\nGROWTH THESIS: [3-5 sentences — specific reasons this company grows over next 1-3 years]\n\nKEY REASONS TO OWN:\n  • [Reason 1 — sourced and specific]\n  • [Reason 2]\n  • [Reason 3]\n\nFINANCIALS:\n  • Revenue Growth: XX% YoY\n  • Gross Margin: XX%\n  • Debt/Equity: X.X\n  • Current Ratio: X.X\n  • Insider Activity: [buying/selling/neutral — specific transactions]\n\nPRICE TARGET: $XX.XX (XX% upside)\nTIME HORIZON: [12-24 months]\nSUGGESTED ENTRY: $XX.XX – $XX.XX\nSTOP LOSS: $XX.XX\nPOSITION SIZE: No more than 3-5% of portfolio\n\nRISKS TO THESIS:\n  • [Specific risk 1]\n  • [Specific risk 2]\n  • [Specific risk 3]\n\nSOURCES SEARCHED:\n  • [Every source consulted]\n\n════════════════════════════════════════════════\nADDITIONAL LONG-TERM OPPORTUNITIES\n════════════════════════════════════════════════\n[Repeat format for each additional company]\n\n════════════════════════════════════════════════\nCOMPANIES TO AVOID\n════════════════════════════════════════════════\n[TICKER] — Reason: [specific red flag found in research]\n\n════════════════════════════════════════════════\nDISCLAIMER: Research only. Not financial advice. Micro/nano cap stocks carry elevated risk. Always do your own due diligence. Never invest more than you can afford to lose.\n════════════════════════════════════════════════\n\nHere is the research packet:\n\n[PASTE PACKET HERE]';
 }
 
 function copyPacket() {
-  var txt = document.getElementById('pack-body').textContent;
-  navigator.clipboard.writeText(txt).then(function() {
-    var b = document.getElementById('copy-btn');
-    b.textContent = '✓ COPIED'; b.classList.add('done');
-    setTimeout(function() { b.textContent = '⌘ COPY PACKET'; b.classList.remove('done'); }, 2500);
+  navigator.clipboard.writeText(document.getElementById('pack-body').textContent).then(function(){
+    var b=document.getElementById('copy-btn');
+    b.textContent='✓ COPIED';b.classList.add('done');
+    setTimeout(function(){b.textContent='⌘ COPY PACKET';b.classList.remove('done');},2500);
   });
 }
-
 function copyPrompt() {
-  var txt = document.getElementById('paste-prompt').textContent;
-  navigator.clipboard.writeText(txt).then(function() {
-    var b = document.querySelector('.paste-copy-btn');
-    var o = b.textContent;
-    b.textContent = '✓ COPIED';
-    setTimeout(function() { b.textContent = o; }, 2500);
+  navigator.clipboard.writeText(document.getElementById('paste-prompt').textContent).then(function(){
+    var b=document.querySelector('.paste-copy-btn');var o=b.textContent;
+    b.textContent='✓ COPIED';
+    setTimeout(function(){b.textContent=o;},2500);
   });
 }
-
 function clearAll() {
-  ['cands','packet','paste-box','log'].forEach(function(id) {
-    var el = document.getElementById(id);
-    el.style.display = 'none';
-    if (id === 'log') el.innerHTML = '';
+  ['cands','packet','paste-box','log'].forEach(function(id){
+    var el=document.getElementById(id);el.style.display='none';
+    if(id==='log')el.innerHTML='';
   });
-  document.getElementById('empty').style.display = 'block';
-  ['pool','scan','pass','sel'].forEach(function(k) { setSV(k, 0); });
-  document.getElementById('sv-time').textContent = '—';
+  document.getElementById('empty').style.display='block';
+  ['universe','scanned','rejected','qualified','selected'].forEach(function(k){setSV(k,0);});
+  document.getElementById('sv-time').textContent='—';
 }
 </script>
 </body>
