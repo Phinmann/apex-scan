@@ -314,27 +314,30 @@ async function fh(path,key){
   }catch(e){return{};}
 }
 
-// SEC EDGAR insider tickers — paginated from browser via proxy
-// Each page call is fast so we never hit Render's 50s timeout
+// SEC EDGAR insider tickers — called DIRECTLY from browser
+// SEC blocks cloud server IPs, but allows browser requests from home IPs
+// No proxy needed — browser calls SEC directly, only Finnhub needs proxy
 async function fetchInsiderBuys(lookbackDays){
-  log('Pipeline 1 — Fetching SEC EDGAR insider buy filings...','g');
+  log('Pipeline 1 — Fetching SEC EDGAR insider buy filings directly...','g');
   var tickers=new Set();
   var fromDate=getPast(lookbackDays);
   var maxPages=15;
 
   for(var page=0;page<maxPages;page++){
     try{
-      var secPath='/LATEST/search-index?forms=4&dateRange=custom&startdt='+fromDate+'&from='+(page*100)+'&size=100';
-      var fullUrl='/api/sec/edgar?path='+encodeURIComponent(secPath);
-      var r=await fetch(fullUrl);
-      log('P1 page '+(page+1)+' HTTP status: '+r.status,'g');
+      var url='https://efts.sec.gov/LATEST/search-index?forms=4&dateRange=custom&startdt='+fromDate+'&from='+(page*100)+'&size=100';
+      var r=await fetch(url,{
+        headers:{
+          'User-Agent':'APEX/SCAN research@apex-scan.com',
+          'Accept':'application/json'
+        }
+      });
       if(!r.ok){
-        log('P1 SEC EDGAR error on page '+(page+1)+': status '+r.status,'r');
+        log('P1 SEC EDGAR HTTP '+r.status+' on page '+(page+1),'a');
         break;
       }
       var data=await r.json();
       var hits=data.hits&&data.hits.hits?data.hits.hits:[];
-      log('P1 page '+(page+1)+': '+hits.length+' hits | '+tickers.size+' tickers total','g');
       if(!hits.length)break;
       hits.forEach(function(h){
         var names=(h._source&&h._source.display_names)||[];
@@ -343,10 +346,11 @@ async function fetchInsiderBuys(lookbackDays){
           if(m)tickers.add(m[1]);
         });
       });
+      log('P1 page '+(page+1)+': '+hits.length+' hits | '+tickers.size+' tickers total','g');
       if(hits.length<100)break;
-      await sleep(200);
+      await sleep(300);
     }catch(e){
-      log('P1 page '+(page+1)+' exception: '+e.message,'r');
+      log('P1 page '+(page+1)+' error: '+e.message,'a');
       break;
     }
   }
