@@ -325,10 +325,16 @@ async function fetchInsiderBuys(lookbackDays){
   for(var page=0;page<maxPages;page++){
     try{
       var secPath='/LATEST/search-index?forms=4&dateRange=custom&startdt='+fromDate+'&from='+(page*100)+'&size=100';
-      var r=await fetch('/api/sec/edgar?path='+encodeURIComponent(secPath));
-      if(!r.ok)break;
+      var fullUrl='/api/sec/edgar?path='+encodeURIComponent(secPath);
+      var r=await fetch(fullUrl);
+      log('P1 page '+(page+1)+' HTTP status: '+r.status,'g');
+      if(!r.ok){
+        log('P1 SEC EDGAR error on page '+(page+1)+': status '+r.status,'r');
+        break;
+      }
       var data=await r.json();
       var hits=data.hits&&data.hits.hits?data.hits.hits:[];
+      log('P1 page '+(page+1)+': '+hits.length+' hits | '+tickers.size+' tickers total','g');
       if(!hits.length)break;
       hits.forEach(function(h){
         var names=(h._source&&h._source.display_names)||[];
@@ -337,10 +343,12 @@ async function fetchInsiderBuys(lookbackDays){
           if(m)tickers.add(m[1]);
         });
       });
-      log('P1 page '+(page+1)+': '+tickers.size+' tickers so far','g');
       if(hits.length<100)break;
       await sleep(200);
-    }catch(e){break;}
+    }catch(e){
+      log('P1 page '+(page+1)+' exception: '+e.message,'r');
+      break;
+    }
   }
 
   // Remove false positives
