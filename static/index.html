@@ -326,12 +326,7 @@ async function fetchInsiderBuys(lookbackDays){
   for(var page=0;page<maxPages;page++){
     try{
       var url='https://efts.sec.gov/LATEST/search-index?forms=4&dateRange=custom&startdt='+fromDate+'&from='+(page*100)+'&size=100';
-      var r=await fetch(url,{
-        headers:{
-          'User-Agent':'APEX/SCAN research@apex-scan.com',
-          'Accept':'application/json'
-        }
-      });
+      var r=await fetch(url);
       if(!r.ok){
         log('P1 SEC EDGAR HTTP '+r.status+' on page '+(page+1),'a');
         break;
