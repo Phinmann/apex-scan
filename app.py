@@ -31,67 +31,17 @@ def finnhub_proxy():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/sec/insider-tickers')
-def sec_insider_tickers():
-    from_date = request.args.get('from_date', '')
-    if not from_date:
-        return jsonify({'error': 'Missing from_date'}), 400
-
-    tickers = set()
-
-    # Method 1 - EDGAR full text search paginated up to 40 pages
+@app.route('/api/sec/edgar')
+def sec_edgar_proxy():
+    path = request.args.get('path')
+    if not path:
+        return jsonify({'error': 'Missing path'}), 400
     try:
-        base_url = 'https://efts.sec.gov/LATEST/search-index'
-        for page in range(40):
-            params = {
-                'forms': '4',
-                'dateRange': 'custom',
-                'startdt': from_date,
-                'from': str(page * 100),
-                'size': '100'
-            }
-            r = requests.get(base_url, params=params, headers=SEC_HEADERS, timeout=20)
-            if not r.ok:
-                break
-            data = r.json()
-            hits = data.get('hits', {}).get('hits', [])
-            if not hits:
-                break
-            for h in hits:
-                src = h.get('_source', {})
-                names = src.get('display_names', [])
-                for n in names:
-                    match = re.search(r'\(([A-Z]{1,5})\)', str(n))
-                    if match:
-                        tickers.add(match.group(1))
-            if len(hits) < 100:
-                break
-    except Exception:
-        pass
-
-    # Method 2 - SEC RSS feed for latest filings
-    try:
-        rss_url = 'https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&dateb=&owner=include&count=100&search_text=&output=atom'
-        r2 = requests.get(rss_url, headers=SEC_HEADERS, timeout=20)
-        if r2.ok:
-            content = r2.text
-            for m in re.finditer(r'\(([A-Z]{1,5})\)', content):
-                if len(m.group(1)) <= 5:
-                    tickers.add(m.group(1))
-    except Exception:
-        pass
-
-    # Remove false positives
-    false_positives = {
-        'LLC','INC','LTD','CORP','CO','LP','NA','US','USA',
-        'SEC','CEO','CFO','COO','CTO','SVP','EVP','VP','THE',
-        'AND','FOR','NEW','OLD','NET','COM','INT','GRP','HLD',
-        'CAP','MGT','INV','SVC','ETF','ADR','PRF'
-    }
-    tickers = tickers - false_positives
-    tickers = {t for t in tickers if re.match(r'^[A-Z]{1,5}$', t)}
-
-    return jsonify({'tickers': list(tickers), 'count': len(tickers)})
+        url = 'https://efts.sec.gov' + path
+        r = requests.get(url, headers=SEC_HEADERS, timeout=20)
+        return jsonify(r.json()), r.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
