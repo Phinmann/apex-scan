@@ -39,7 +39,7 @@ def sec_insider_tickers():
 
     tickers = set()
 
-    # Method 1: EDGAR full-text search paginated
+    # Method 1 - EDGAR full text search paginated up to 40 pages
     try:
         base_url = 'https://efts.sec.gov/LATEST/search-index'
         for page in range(40):
@@ -47,8 +47,8 @@ def sec_insider_tickers():
                 'forms': '4',
                 'dateRange': 'custom',
                 'startdt': from_date,
-                'from': page * 100,
-                'size': 100
+                'from': str(page * 100),
+                'size': '100'
             }
             r = requests.get(base_url, params=params, headers=SEC_HEADERS, timeout=20)
             if not r.ok:
@@ -69,7 +69,7 @@ def sec_insider_tickers():
     except Exception:
         pass
 
-    # Method 2: SEC RSS feed
+    # Method 2 - SEC RSS feed for latest filings
     try:
         rss_url = 'https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&dateb=&owner=include&count=100&search_text=&output=atom'
         r2 = requests.get(rss_url, headers=SEC_HEADERS, timeout=20)
@@ -81,7 +81,7 @@ def sec_insider_tickers():
     except Exception:
         pass
 
-    # Clean up false positives
+    # Remove false positives
     false_positives = {
         'LLC','INC','LTD','CORP','CO','LP','NA','US','USA',
         'SEC','CEO','CFO','COO','CTO','SVP','EVP','VP','THE',
@@ -91,34 +91,7 @@ def sec_insider_tickers():
     tickers = tickers - false_positives
     tickers = {t for t in tickers if re.match(r'^[A-Z]{1,5}$', t)}
 
-    return jsonify({
-        'tickers': list(tickers),
-        'count': len(tickers)
-    })
-
-@app.route('/api/sec/edgar')
-def sec_edgar_proxy():
-    path = request.args.get('path')
-    if not path:
-        return jsonify({'error': 'Missing path'}), 400
-    try:
-        url = 'https://efts.sec.gov' + path
-        r = requests.get(url, headers=SEC_HEADERS, timeout=20)
-        return jsonify(r.json()), r.status_code
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/sec/data')
-def sec_data_proxy():
-    path = request.args.get('path')
-    if not path:
-        return jsonify({'error': 'Missing path'}), 400
-    try:
-        url = 'https://data.sec.gov' + path
-        r = requests.get(url, headers=SEC_HEADERS, timeout=20)
-        return jsonify(r.json()), r.status_code
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({'tickers': list(tickers), 'count': len(tickers)})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
