@@ -314,47 +314,110 @@ async function fh(path,key){
   }catch(e){return{};}
 }
 
-// SEC EDGAR insider tickers — called DIRECTLY from browser
-// SEC blocks cloud server IPs, but allows browser requests from home IPs
-// No proxy needed — browser calls SEC directly, only Finnhub needs proxy
-async function fetchInsiderBuys(lookbackDays){
-  log('Pipeline 1 — Fetching SEC EDGAR insider buy filings directly...','g');
-  var tickers=new Set();
-  var fromDate=getPast(lookbackDays);
-  var maxPages=15;
+// Pipeline 1 — Finnhub Insider Buy Scanner
+// Scans micro/nano cap stocks via Finnhub for recent insider purchases
+// Routes through our Render proxy — reliable, no CORS, no IP blocking
+async function fetchInsiderBuys(lookbackDays, key, mic, caprange, sectorMap, sector, minVol){
+  log('Pipeline 1 — Scanning micro/nano cap universe for insider buying...','g');
+  var insiderStocks={};
 
-  for(var page=0;page<maxPages;page++){
-    try{
-      var url='https://efts.sec.gov/LATEST/search-index?forms=4&dateRange=custom&startdt='+fromDate+'&from='+(page*100)+'&size=100';
-      var r=await fetch(url);
-      if(!r.ok){
-        log('P1 SEC EDGAR HTTP '+r.status+' on page '+(page+1),'a');
-        break;
-      }
-      var data=await r.json();
-      var hits=data.hits&&data.hits.hits?data.hits.hits:[];
-      if(!hits.length)break;
-      hits.forEach(function(h){
-        var names=(h._source&&h._source.display_names)||[];
-        names.forEach(function(n){
-          var m=String(n).match(/\(([A-Z]{1,5})\)/);
-          if(m)tickers.add(m[1]);
-        });
-      });
-      log('P1 page '+(page+1)+': '+hits.length+' hits | '+tickers.size+' tickers total','g');
-      if(hits.length<100)break;
-      await sleep(300);
-    }catch(e){
-      log('P1 page '+(page+1)+' error: '+e.message,'a');
-      break;
+  try{
+    // Step 1: Get full US stock list
+    var allSyms=await fh('/stock/symbol?exchange=US',key);
+    if(!allSyms||!Array.isArray(allSyms)){
+      log('P1 — could not fetch symbol list','a');
+      return insiderStocks;
     }
+
+    // Step 2: Filter to common stocks on target exchanges only
+    var common=allSyms.filter(function(s){
+      return s.type==='Common Stock'&&s.mic&&mic.some(function(m){return s.mic.includes(m);});
+    });
+
+    // Step 3: Shuffle for diversity then check up to 300 stocks for insider activity
+    var sample=common.sort(function(){return Math.random()-0.5;}).slice(0,300);
+    log('P1 — checking '+sample.length+' stocks for insider buying...','g');
+
+    var cutoffDate=getPast(lookbackDays);
+    var found=0;
+
+    for(var i=0;i<sample.length;i++){
+      var sym=sample[i];
+
+      if(i>0&&i%30===0){
+        log('P1 — checked '+i+'/'+sample.length+' | found '+found+' insider buyers','g');
+        await sleep(400);
+      }
+
+      try{
+        // Get quote and profile first to check cap range
+        var q=await fh('/quote?symbol='+sym.symbol,key);
+        var p=await fh('/stock/profile2?symbol='+sym.symbol,key);
+        if(!q||!p||typeof q!=='object'||typeof p!=='object')continue;
+
+        var mc=p.marketCapitalization||0;
+        var price=q.c||0;
+        var vol=q.v||0;
+
+        if(!mc)continue;
+
+        // Strict micro/nano cap filter BEFORE checking insider data
+        // This prevents wasting calls on large caps
+        var isNano=mc>2&&mc<50;
+        var isMicro=mc>=50&&mc<=300;
+        if(caprange==='nano'&&!isNano)continue;
+        if(caprange==='micro'&&!isMicro)continue;
+        if(caprange==='both'&&!isNano&&!isMicro)continue;
+
+        // Volume filter (relaxed for insider stocks)
+        if(vol>0&&vol<minVol)continue;
+
+        // Sector filter
+        if(sector!=='all'){
+          var ind=(p.finnhubIndustry||'').toLowerCase();
+          var keys=sectorMap[sector]||[];
+          if(!keys.some(function(k){return ind.includes(k);}))continue;
+        }
+
+        // Now check insider transactions for this confirmed micro/nano cap stock
+        var insData=await fh('/stock/insider-transactions?symbol='+sym.symbol,key);
+        if(!insData||!insData.data||!insData.data.length)continue;
+
+        // Filter to purchases within lookback period
+        var recentBuys=insData.data.filter(function(tx){
+          var isPurchase=(tx.transactionType||'').toLowerCase().includes('p') ||
+                         (tx.transactionType||'').toLowerCase().includes('buy') ||
+                         (tx.transactionType||'').toLowerCase().includes('purchase');
+          var isRecent=tx.transactionDate&&tx.transactionDate>=cutoffDate;
+          return isPurchase&&isRecent;
+        });
+
+        if(recentBuys.length>0){
+          insiderStocks[sym.symbol]={
+            sym:sym.symbol,
+            name:p.name||sym.symbol,
+            ind:p.finnhubIndustry||'N/A',
+            mc:mc,price:price,chg:q.dp||0,vol:vol,
+            type:isNano?'nano':'micro',
+            exch:p.exchange||'',
+            source:'insider',
+            m:{},ins:insData.data.slice(0,10),news:[],
+            score:0,reasons:[]
+          };
+          found++;
+          log('P1 ✓ '+sym.symbol+' — '+fmtCap(mc)+' | '+recentBuys.length+' insider buy(s) | '+(p.finnhubIndustry||'N/A'),'g');
+        }
+
+      }catch(e){/* skip */}
+    }
+
+    log('Pipeline 1 complete: '+found+' micro/nano cap stocks with insider buying','g');
+
+  }catch(e){
+    log('P1 error: '+e.message,'a');
   }
 
-  // Remove false positives
-  var fp=new Set(['LLC','INC','LTD','CORP','CO','LP','NA','US','USA','SEC','CEO','CFO','COO','CTO','SVP','EVP','VP','THE','AND','FOR','NEW','OLD','NET','COM','INT','GRP','HLD','CAP','MGT','INV','SVC','ETF','ADR','PRF']);
-  var result=Array.from(tickers).filter(function(t){return !fp.has(t)&&/^[A-Z]{1,5}$/.test(t);});
-  log('Pipeline 1 — SEC EDGAR complete: '+result.length+' unique insider-buy tickers','g');
-  return result;
+  return insiderStocks;
 }
 
 // Value scoring — long term fundamentals only
@@ -474,68 +537,17 @@ async function runScan(){
   var combinedPool={};
 
   try{
-    // ── PIPELINE 1: SEC EDGAR Insider Buy Feed ──────────────
-    log('━━━ PIPELINE 1: SEC EDGAR Insider Buy Feed ━━━','g');
-    var insiderTickers=await fetchInsiderBuys(insLookback);
-    var insiderCount=0;
+    // ── PIPELINE 1: Finnhub Insider Buy Scanner ─────────────
+    log('━━━ PIPELINE 1: Insider Buy Scanner ━━━','g');
+    var insiderPool=await fetchInsiderBuys(insLookback,key,mic,caprange,sectorMap,sector,minVol);
+    var insiderCount=Object.keys(insiderPool).length;
 
-    log('Checking '+insiderTickers.length+' insider tickers for micro/nano cap...','g');
-
-    for(var i=0;i<insiderTickers.length;i++){
-      var ticker=insiderTickers[i];
-      if(combinedPool[ticker])continue;
-
-      if(i>0&&i%25===0){
-        log('P1 — checked '+i+'/'+insiderTickers.length+' | found '+insiderCount+' micro/nano cap','g');
-        await sleep(300);
-      }
-
-      var q=await fh('/quote?symbol='+ticker,key);
-      var p=await fh('/stock/profile2?symbol='+ticker,key);
-
-      if(!q||!p||typeof q!=='object'||typeof p!=='object')continue;
-
-      var mc=p.marketCapitalization||0;
-      var price=q.c||0;
-      var vol=q.v||0;
-
-      if(!mc)continue;
-
-      // Log micro/nano candidates
-      if(mc>0&&mc<=300){
-        log('P1 checking: '+ticker+' cap='+fmtCap(mc)+' price=$'+(price||0).toFixed(2),'g');
-      }
-
-      // Skip if volume data exists but is too low
-      if(vol>0&&vol<minVol)continue;
-
-      var isNano=mc>2&&mc<50;
-      var isMicro=mc>=50&&mc<=300;
-      if(caprange==='nano'&&!isNano)continue;
-      if(caprange==='micro'&&!isMicro)continue;
-      if(caprange==='both'&&!isNano&&!isMicro)continue;
-
-      if(sector!=='all'){
-        var ind=(p.finnhubIndustry||'').toLowerCase();
-        var keys=sectorMap[sector]||[];
-        if(!keys.some(function(k){return ind.includes(k);}))continue;
-      }
-
-      combinedPool[ticker]={
-        sym:ticker,name:p.name||ticker,
-        ind:p.finnhubIndustry||'N/A',
-        mc:mc,price:price,chg:q.dp||0,vol:vol,
-        type:isNano?'nano':'micro',
-        exch:p.exchange||'',
-        source:'insider',
-        m:{},ins:[],news:[],score:0,reasons:[]
-      };
-      insiderCount++;
-      setSV('insider',insiderCount);
-      log('P1 ✓ '+ticker+' — '+fmtCap(mc)+' | '+(p.finnhubIndustry||'N/A'),'g');
-    }
-
-    log('Pipeline 1 complete: '+insiderCount+' insider-buy micro/nano cap stocks','g');
+    // Merge insider stocks into combined pool
+    Object.keys(insiderPool).forEach(function(ticker){
+      combinedPool[ticker]=insiderPool[ticker];
+    });
+    setSV('insider',insiderCount);
+    log('Pipeline 1 complete: '+insiderCount+' micro/nano cap stocks with insider buying','g');
 
     // ── PIPELINE 2: Fundamental Value Screener ──────────────
     log('━━━ PIPELINE 2: Fundamental Value Screener ━━━','b');
