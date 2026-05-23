@@ -314,21 +314,40 @@ async function fh(path,key){
   }catch(e){return{};}
 }
 
-// SEC EDGAR insider tickers via our backend
+// SEC EDGAR insider tickers — paginated from browser via proxy
+// Each page call is fast so we never hit Render's 50s timeout
 async function fetchInsiderBuys(lookbackDays){
-  log('Pipeline 1 — Fetching SEC EDGAR insider buy filings (paginated)...','g');
-  try{
-    var fromDate=getPast(lookbackDays);
-    var r=await fetch('/api/sec/insider-tickers?from_date='+fromDate);
-    if(!r.ok)throw new Error('SEC endpoint '+r.status);
-    var data=await r.json();
-    var tickers=data.tickers||[];
-    log('Pipeline 1 — SEC EDGAR complete: '+tickers.length+' unique insider-buy tickers','g');
-    return tickers;
-  }catch(e){
-    log('Pipeline 1 — SEC issue: '+e.message,'a');
-    return[];
+  log('Pipeline 1 — Fetching SEC EDGAR insider buy filings...','g');
+  var tickers=new Set();
+  var fromDate=getPast(lookbackDays);
+  var maxPages=15;
+
+  for(var page=0;page<maxPages;page++){
+    try{
+      var secPath='/LATEST/search-index?forms=4&dateRange=custom&startdt='+fromDate+'&from='+(page*100)+'&size=100';
+      var r=await fetch('/api/sec/edgar?path='+encodeURIComponent(secPath));
+      if(!r.ok)break;
+      var data=await r.json();
+      var hits=data.hits&&data.hits.hits?data.hits.hits:[];
+      if(!hits.length)break;
+      hits.forEach(function(h){
+        var names=(h._source&&h._source.display_names)||[];
+        names.forEach(function(n){
+          var m=String(n).match(/\(([A-Z]{1,5})\)/);
+          if(m)tickers.add(m[1]);
+        });
+      });
+      log('P1 page '+(page+1)+': '+tickers.size+' tickers so far','g');
+      if(hits.length<100)break;
+      await sleep(200);
+    }catch(e){break;}
   }
+
+  // Remove false positives
+  var fp=new Set(['LLC','INC','LTD','CORP','CO','LP','NA','US','USA','SEC','CEO','CFO','COO','CTO','SVP','EVP','VP','THE','AND','FOR','NEW','OLD','NET','COM','INT','GRP','HLD','CAP','MGT','INV','SVC','ETF','ADR','PRF']);
+  var result=Array.from(tickers).filter(function(t){return !fp.has(t)&&/^[A-Z]{1,5}$/.test(t);});
+  log('Pipeline 1 — SEC EDGAR complete: '+result.length+' unique insider-buy tickers','g');
+  return result;
 }
 
 // Value scoring — long term fundamentals only
