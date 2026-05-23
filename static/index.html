@@ -586,7 +586,17 @@ async function runScan(){
         var price2=q2.c||0;
         var vol2=q2.v||0;
 
-        if(!mc2||price2<0.50||vol2<minVol)continue;
+        // Diagnostic: log every micro/nano cap we find regardless of price
+        if(mc2>2&&mc2<=300){
+          log('P2 found micro/nano: '+sym2.symbol+' cap='+fmtCap(mc2)+' price=$'+price2.toFixed(2)+' vol='+vol2.toLocaleString(),'b');
+        }
+
+        // Only reject if we have NO market cap data at all
+        if(!mc2)continue;
+        // Price filter: skip if price is clearly bad data (negative) but allow $0 - may be after hours
+        if(price2<0)continue;
+        // Volume filter: only apply if we actually have volume data
+        if(vol2>0&&vol2<minVol)continue;
 
         var isNano2=mc2>2&&mc2<50;
         var isMicro2=mc2>=50&&mc2<=300;
