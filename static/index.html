@@ -20,7 +20,6 @@
 }
 html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px}
 .app{max-width:980px;margin:0 auto;padding:24px 20px 60px}
-
 .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:0.5px solid var(--border2)}
 .logo{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:var(--green);letter-spacing:.08em}
 .logo em{color:var(--text3);font-style:normal;font-weight:300}
@@ -28,7 +27,6 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'I
 .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 .clock{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3)}
-
 .pipeline-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .pipeline{border-radius:10px;padding:14px;border:0.5px solid}
 .pipeline.p1{background:#0a1a0f;border-color:var(--green)}
@@ -37,7 +35,6 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'I
 .pipeline.p1 .pipeline-title{color:var(--green)}
 .pipeline.p2 .pipeline-title{color:var(--blue)}
 .pipeline-desc{font-size:11px;color:var(--text3);line-height:1.6}
-
 .config{background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
 .section-label{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:10px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
@@ -50,22 +47,18 @@ input.fi::placeholder{color:var(--text3)}
 .key-hint a{color:var(--blue);text-decoration:none}
 .key-row{display:flex;gap:10px;align-items:flex-end;margin-bottom:14px}
 .key-row .field{flex:1}
-
 .run-btn{background:var(--green);color:#000;border:none;border-radius:8px;padding:12px 24px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.06em;transition:all .15s;width:100%;margin-top:6px}
 .run-btn:hover:not(:disabled){background:#00ff88;transform:translateY(-1px)}
 .run-btn:disabled{background:var(--text3);color:var(--bg);cursor:not-allowed;transform:none}
-
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
 .stat{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px}
 .sv{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600}
 .sv.g{color:var(--green)}.sv.a{color:var(--amber)}.sv.r{color:var(--red)}.sv.b{color:var(--blue)}.sv.c{color:var(--cyan)}.sv.p{color:var(--purple)}
 .sl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
-
 .log{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;max-height:220px;overflow-y:auto;margin-bottom:14px;display:none}
 .ll{display:flex;gap:8px;padding:1.5px 0}
 .ll .ts{color:var(--text3);flex-shrink:0}
 .ll.g .m{color:var(--green)}.ll.a .m{color:var(--amber)}.ll.r .m{color:var(--red)}.ll.b .m{color:var(--blue)}.ll.c .m{color:var(--cyan)}.ll.p .m{color:var(--purple)}
-
 .cands{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;display:none}
 .box-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--border);background:var(--bg3)}
 .box-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.07em}
@@ -91,7 +84,6 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .pill.bal{background:var(--cyan-dim);color:var(--cyan)}
 .pill.mgn{background:var(--amber-dim);color:var(--amber)}
 .pill.cat{background:var(--red-dim);color:var(--red)}
-
 .packet{background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;display:none;margin-bottom:14px}
 .pack-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--border);background:var(--bg3)}
 .pack-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--cyan);letter-spacing:.07em}
@@ -101,17 +93,14 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .act-btn.done{color:var(--green);border-color:var(--green)}
 .act-btn.red:hover{color:var(--red);border-color:var(--red)}
 .pack-body{padding:20px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.9;color:var(--text);white-space:pre-wrap;word-break:break-word;max-height:560px;overflow-y:auto}
-
 .paste-box{background:var(--green-dim);border:0.5px solid var(--green);border-radius:8px;padding:16px;display:none;margin-bottom:14px}
 .paste-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--green);margin-bottom:8px}
 .paste-body{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px}
 .paste-prompt{background:var(--bg3);border:0.5px solid var(--border2);border-radius:6px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);line-height:1.8;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto}
 .paste-copy-btn{margin-top:10px;background:none;border:0.5px solid var(--green);border-radius:5px;padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;color:var(--green);letter-spacing:.04em}
 .paste-copy-btn:hover{background:var(--green-dim)}
-
 .empty{text-align:center;padding:40px 20px;color:var(--text3);font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:2}
 .empty .big{font-size:28px;margin-bottom:10px}
-
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 @media(max-width:640px){
@@ -129,19 +118,17 @@ tr:hover td{background:var(--bg3);color:var(--text)}
   <div class="hdr-right"><div class="dot"></div><div class="clock" id="clock">--:--:-- UTC</div></div>
 </div>
 
-<!-- Pipeline explanation -->
 <div class="pipeline-row">
   <div class="pipeline p1">
-    <div class="pipeline-title">● PIPELINE 1 — Insider Buy Feed</div>
-    <div class="pipeline-desc">Pulls every Form 4 insider purchase filed with the SEC in the last 30 days. Filters to micro/nano cap only. These are executives spending their own money — the strongest long-term signal that exists.</div>
+    <div class="pipeline-title">● PIPELINE 1 — SEC EDGAR Insider Buy Feed</div>
+    <div class="pipeline-desc">Pulls every Form 4 insider purchase filed with the SEC in the lookback period. Filters to micro/nano cap only. Executives spending their own money — the strongest long-term signal.</div>
   </div>
   <div class="pipeline p2">
-    <div class="pipeline-title">◆ PIPELINE 2 — Fundamental Screener</div>
-    <div class="pipeline-desc">Scans the micro/nano cap universe specifically — not the whole market. Screens for revenue growth, strong margins, low debt, and valuation gaps. Finds great companies even without recent insider activity.</div>
+    <div class="pipeline-title">◆ PIPELINE 2 — Fundamental Value Screener</div>
+    <div class="pipeline-desc">Scans the micro/nano cap universe for strong revenue growth, high margins, low debt, and valuation gaps. Finds great companies even without recent insider activity.</div>
   </div>
 </div>
 
-<!-- Config -->
 <div class="config">
   <div class="section-label">Data Source — Finnhub (Free)</div>
   <div class="key-row">
@@ -151,7 +138,6 @@ tr:hover td{background:var(--bg3);color:var(--text)}
       <div class="key-hint">Free key at <a href="https://finnhub.io" target="_blank">finnhub.io</a> — no credit card required</div>
     </div>
   </div>
-
   <div class="section-label">Universe Filters</div>
   <div class="grid3">
     <div class="field">
@@ -185,17 +171,18 @@ tr:hover td{background:var(--bg3);color:var(--text)}
     <div class="field">
       <div class="lbl">Min Daily Volume</div>
       <select class="fi" id="minvol">
-        <option value="25000">25k shares (broader)</option>
-        <option value="50000" selected>50k shares (balanced)</option>
-        <option value="100000">100k shares (liquid only)</option>
+        <option value="10000">10k shares (broadest)</option>
+        <option value="25000" selected>25k shares (balanced)</option>
+        <option value="50000">50k shares</option>
+        <option value="100000">100k shares</option>
       </select>
     </div>
     <div class="field">
       <div class="lbl">Insider Lookback</div>
       <select class="fi" id="inslookback">
-        <option value="30" selected>Last 30 days</option>
+        <option value="30">Last 30 days</option>
         <option value="60">Last 60 days</option>
-        <option value="90">Last 90 days</option>
+        <option value="90" selected>Last 90 days</option>
       </select>
     </div>
     <div class="field">
@@ -207,42 +194,38 @@ tr:hover td{background:var(--bg3);color:var(--text)}
       </select>
     </div>
   </div>
-
-  <div class="section-label">Value Thresholds — Pipeline 2 Fundamental Screener</div>
+  <div class="section-label">Value Thresholds — Pipeline 2</div>
   <div class="grid3">
     <div class="field">
       <div class="lbl">Min Revenue Growth</div>
       <select class="fi" id="mingrowth">
-        <option value="0">Any positive growth</option>
+        <option value="0" selected>Any growth</option>
         <option value="10">10%+ YoY</option>
-        <option value="20" selected>20%+ YoY</option>
+        <option value="20">20%+ YoY</option>
         <option value="30">30%+ YoY</option>
       </select>
     </div>
     <div class="field">
       <div class="lbl">Min Gross Margin</div>
       <select class="fi" id="minmargin">
-        <option value="0">Any margin</option>
-        <option value="20" selected>20%+ minimum</option>
+        <option value="0" selected>Any margin</option>
+        <option value="20">20%+ minimum</option>
         <option value="40">40%+ minimum</option>
-        <option value="60">60%+ minimum</option>
       </select>
     </div>
     <div class="field">
       <div class="lbl">Max Debt / Equity</div>
       <select class="fi" id="maxde">
-        <option value="0.5">0.5x — very conservative</option>
-        <option value="1.0" selected>1.0x — balanced</option>
-        <option value="2.0">2.0x — lenient</option>
-        <option value="99">No limit</option>
+        <option value="99" selected>No limit</option>
+        <option value="2.0">2.0x maximum</option>
+        <option value="1.0">1.0x maximum</option>
+        <option value="0.5">0.5x maximum</option>
       </select>
     </div>
   </div>
-
   <button class="run-btn" id="run-btn" onclick="runScan()">▶ RUN DUAL PIPELINE SCAN</button>
 </div>
 
-<!-- Stats -->
 <div class="stats">
   <div class="stat"><div class="sv g" id="sv-insider">0</div><div class="sl">Insider Buys</div></div>
   <div class="stat"><div class="sv b" id="sv-fundamental">0</div><div class="sl">Fundamental</div></div>
@@ -317,136 +300,112 @@ function fmtPct(v){if(v==null||isNaN(v))return'—';return(v>0?'+':'')+v.toFixed
 function fmtN(v,dec){dec=dec||1;if(v==null||isNaN(v)||v===undefined)return'N/A';return Number(v).toFixed(dec);}
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
-async function fh(path,key,retries){
-  retries=retries||1;
+// All Finnhub calls go through our Render proxy — no CORS issues
+async function fh(path,key){
   var url='/api/finnhub?path='+encodeURIComponent(path)+'&token='+key;
-  for(var i=0;i<=retries;i++){
-    try{
-      // 8 second timeout — if Finnhub doesn't respond, skip and move on
-      var controller=new AbortController();
-      var timeout=setTimeout(function(){controller.abort();},8000);
-      var r=await fetch(url,{signal:controller.signal});
-      clearTimeout(timeout);
-      if(r.status===429){await sleep(2500);continue;}
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      return await r.json();
-    }catch(e){
-      if(e.name==='AbortError'){throw new Error('Timeout — skipping');}
-      if(i===retries)throw e;
-      await sleep(800);
-    }
-  }
+  try{
+    var controller=new AbortController();
+    var tid=setTimeout(function(){controller.abort();},10000);
+    var r=await fetch(url,{signal:controller.signal});
+    clearTimeout(tid);
+    if(r.status===429){await sleep(2000);return{};}
+    if(!r.ok)return{};
+    return await r.json();
+  }catch(e){return{};}
 }
 
-// ── SEC EDGAR insider feed ────────────────────────────────
-// Uses our Render backend which paginates through ALL SEC EDGAR pages
-// Gets every insider purchase filed in the lookback period — not just page 1
+// SEC EDGAR insider tickers via our backend
 async function fetchInsiderBuys(lookbackDays){
-  log('Pipeline 1 — Fetching ALL SEC EDGAR insider buy filings (paginated)...','g');
+  log('Pipeline 1 — Fetching SEC EDGAR insider buy filings (paginated)...','g');
   try{
     var fromDate=getPast(lookbackDays);
-    // Call our backend endpoint which handles all pagination server-side
     var r=await fetch('/api/sec/insider-tickers?from_date='+fromDate);
-    if(!r.ok)throw new Error('SEC insider endpoint '+r.status);
+    if(!r.ok)throw new Error('SEC endpoint '+r.status);
     var data=await r.json();
     var tickers=data.tickers||[];
-    log('Pipeline 1 — SEC EDGAR complete: '+tickers.length+' unique insider-buy tickers found across all pages','g');
+    log('Pipeline 1 — SEC EDGAR complete: '+tickers.length+' unique insider-buy tickers','g');
     return tickers;
   }catch(e){
-    log('Pipeline 1 — SEC EDGAR issue: '+e.message,'a');
+    log('Pipeline 1 — SEC issue: '+e.message,'a');
     return[];
   }
 }
 
-// ── Value scoring engine ──────────────────────────────────
-function scoreForValue(c, minGrowth, minMargin, maxDE){
+// Value scoring — long term fundamentals only
+function scoreForValue(c,minGrowth,minMargin,maxDE){
   var m=c.m||{};
   var reasons=[];
   var score=0;
-
-  // Red flag checks
   var cr=m.currentRatioQuarterly||0;
   var de=m['totalDebt/totalEquityQuarterly'];
   var revGr=m.revenueGrowthTTMYoy;
 
   // Hard disqualifiers
-  if(cr>0&&cr<0.8){c.redFlag='Current ratio critically low ('+cr.toFixed(1)+'x)';return false;}
-  if(de!=null&&de>maxDE*2){c.redFlag='Debt/equity too high ('+de.toFixed(1)+'x)';return false;}
-  if(revGr!=null&&revGr<-40){c.redFlag='Revenue collapsing ('+revGr.toFixed(0)+'%)';return false;}
+  if(cr>0&&cr<0.8){c.redFlag='Current ratio critically low';return false;}
+  if(de!=null&&de>maxDE*2&&maxDE<99){c.redFlag='Debt too high';return false;}
+  if(revGr!=null&&revGr<-50){c.redFlag='Revenue collapsing';return false;}
 
-  // 1. INSIDER BUYING — highest weight, 2-5 year signal
+  // 1. Insider buying — strongest signal
   var buys=(c.ins||[]).filter(function(i){return(i.transactionType||'').toLowerCase().includes('buy');});
   var sells=(c.ins||[]).filter(function(i){return(i.transactionType||'').toLowerCase().includes('sell');});
   if(buys.length>0){
     score+=buys.length*25;
-    reasons.push('ins');
-    // Net buying (more buys than sells) is extra bullish
     if(buys.length>sells.length)score+=15;
+    reasons.push('ins');
   }
 
-  // 2. REVENUE GROWTH — company genuinely getting bigger
-  if(revGr!=null){
-    if(revGr>=minGrowth){
-      score+=20;
-      if(revGr>=40)score+=10;
-      if(revGr>=75)score+=10;
-      if(revGr>=100)score+=10;
-      reasons.push('rev');
-    }
+  // 2. Revenue growth
+  if(revGr!=null&&revGr>=minGrowth&&minGrowth>=0){
+    score+=20;
+    if(revGr>=40)score+=10;
+    if(revGr>=75)score+=10;
+    if(revGr>=100)score+=10;
+    reasons.push('rev');
   }
 
-  // 3. GROSS MARGIN — quality business model
+  // 3. Gross margin
   var gm=m.grossMarginTTM||0;
-  if(gm>=minMargin){
+  if(gm>=minMargin&&minMargin>=0){
     score+=15;
     if(gm>=50)score+=8;
     if(gm>=70)score+=8;
     reasons.push('mgn');
   }
 
-  // 4. BALANCE SHEET — can grow without diluting shareholders
+  // 4. Balance sheet
   if(de!=null&&de<0.5&&cr>=2){score+=20;reasons.push('bal');}
   else if(de!=null&&de<1.0&&cr>=1.5){score+=10;reasons.push('bal');}
-  else if(de!=null&&de<1.5&&cr>=1.2){score+=5;}
 
-  // 5. VALUATION GAP — cheap relative to growth
+  // 5. Valuation gap
   var pe=m.peExclExtraTTM;
   var ps=m.psTTM;
   var pb=m.pbQuarterly;
-  if(pe!=null&&pe>0&&pe<15&&revGr>20){score+=25;reasons.push('val');}
-  else if(pe!=null&&pe>0&&pe<25&&revGr>30){score+=15;reasons.push('val');}
-  else if(ps!=null&&ps>0&&ps<2&&revGr>20){score+=20;reasons.push('val');}
+  if(pe!=null&&pe>0&&pe<15&&(revGr||0)>20){score+=25;reasons.push('val');}
+  else if(ps!=null&&ps>0&&ps<2&&(revGr||0)>20){score+=20;reasons.push('val');}
   else if(pb!=null&&pb>0&&pb<1.5){score+=10;reasons.push('val');}
 
-  // 6. PROFITABILITY — actually making money
+  // 6. Profitability
   var npm=m.netProfitMarginTTM||0;
   var roe=m.roeTTM||0;
-  if(npm>0)score+=8;
+  if(npm>0)score+=5;
   if(npm>10)score+=8;
-  if(npm>20)score+=8;
   if(roe>15)score+=8;
-  if(roe>25)score+=8;
 
-  // 7. RECENT CATALYST — news activity
+  // 7. News catalyst
   if((c.news||[]).length>=2){score+=8;reasons.push('cat');}
 
-  // 8. MULTI-SIGNAL CONVICTION BONUS
+  // Multi-signal bonus
   if(reasons.length>=3)score+=15;
   if(reasons.length>=4)score+=20;
-  if(reasons.length>=5)score+=25;
-
-  // Best combo: insider buying + revenue growth + cheap valuation
   if(reasons.includes('ins')&&reasons.includes('rev')&&reasons.includes('val'))score+=30;
   if(reasons.includes('ins')&&reasons.includes('rev'))score+=20;
 
-  // Pipeline 1 bonus — insider stocks get a head start
+  // Pipeline 1 bonus
   if(c.source==='insider')score+=20;
 
   c.score=score;
   c.reasons=reasons;
-
-  // Must have at least one reason and minimum score
-  return score>=25&&reasons.length>=1;
+  return score>=20&&reasons.length>=1;
 }
 
 async function runScan(){
@@ -465,264 +424,197 @@ async function runScan(){
   ['insider','fundamental','combined','scored','selected'].forEach(function(k){setSV(k,0);});
   document.getElementById('sv-time').textContent='—';
 
-  var caprange    =document.getElementById('caprange').value;
-  var sector      =document.getElementById('sector').value;
-  var exch        =document.getElementById('exch').value;
-  var minVol      =parseInt(document.getElementById('minvol').value);
-  var insLookback =parseInt(document.getElementById('inslookback').value);
-  var topN        =parseInt(document.getElementById('topn').value);
-  var minGrowth   =parseInt(document.getElementById('mingrowth').value);
-  var minMargin   =parseInt(document.getElementById('minmargin').value);
-  var maxDE       =parseFloat(document.getElementById('maxde').value);
-  var date        =new Date().toDateString();
+  var caprange=document.getElementById('caprange').value;
+  var sector=document.getElementById('sector').value;
+  var exch=document.getElementById('exch').value;
+  var minVol=parseInt(document.getElementById('minvol').value);
+  var insLookback=parseInt(document.getElementById('inslookback').value);
+  var topN=parseInt(document.getElementById('topn').value);
+  var minGrowth=parseInt(document.getElementById('mingrowth').value);
+  var minMargin=parseInt(document.getElementById('minmargin').value);
+  var maxDE=parseFloat(document.getElementById('maxde').value);
+  var date=new Date().toDateString();
 
   var sectorMap={
-    biotech:    ['biotech','pharma','life sci','drug','medic','therapeut','genomic','clinical'],
-    tech:       ['tech','software','semi','cloud','data','cyber','machine','saas','internet','ai '],
-    energy:     ['energy','oil','gas','mining','metal','resource','lithium','uranium','coal'],
-    industrial: ['industrial','manufactur','construct','transport','defense','aerospace','logistics'],
-    consumer:   ['consumer','retail','food','bever','apparel','restaurant','hospitality'],
-    financial:  ['bank','financ','insur','invest','reit','credit','lending','asset']
+    biotech:['biotech','pharma','life sci','drug','medic','therapeut','genomic','clinical'],
+    tech:['tech','software','semi','cloud','data','cyber','machine','saas','internet','ai '],
+    energy:['energy','oil','gas','mining','metal','resource','lithium','uranium','coal'],
+    industrial:['industrial','manufactur','construct','transport','defense','aerospace','logistics'],
+    consumer:['consumer','retail','food','bever','apparel','restaurant','hospitality'],
+    financial:['bank','financ','insur','invest','reit','credit','lending','asset']
   };
 
   var mic=exch==='nasdaq'?['XNAS']:exch==='nyse'?['XNYS','XASE']:['XNAS','XNYS','XASE'];
-
-  var combinedPool={};  // keyed by ticker to avoid duplicates
+  var combinedPool={};
 
   try{
-    // ════════════════════════════════════════════
-    // PIPELINE 1 — SEC EDGAR Insider Buy Feed
-    // ════════════════════════════════════════════
+    // ── PIPELINE 1: SEC EDGAR Insider Buy Feed ──────────────
     log('━━━ PIPELINE 1: SEC EDGAR Insider Buy Feed ━━━','g');
     var insiderTickers=await fetchInsiderBuys(insLookback);
-
-    log('Checking '+Math.min(insiderTickers.length,175)+' insider tickers for micro/nano cap status...','g');
     var insiderCount=0;
 
-    // Check each insider ticker directly against Finnhub
-    // No symbol map filtering — that was dropping valid tickers
-    for(var i=0;i<Math.min(insiderTickers.length,175);i++){
+    log('Checking '+insiderTickers.length+' insider tickers for micro/nano cap...','g');
+
+    for(var i=0;i<insiderTickers.length;i++){
       var ticker=insiderTickers[i];
       if(combinedPool[ticker])continue;
 
-      // Progress update every 25 tickers
       if(i>0&&i%25===0){
-        log('P1 — checked '+i+'/'+Math.min(insiderTickers.length,175)+' insider tickers | found '+insiderCount+' micro/nano cap','g');
-        await sleep(500);
+        log('P1 — checked '+i+'/'+insiderTickers.length+' | found '+insiderCount+' micro/nano cap','g');
+        await sleep(300);
       }
 
-      try{
-        var results=await Promise.all([
-          fh('/quote?symbol='+ticker,key),
-          fh('/stock/profile2?symbol='+ticker,key)
-        ]);
-        var q=results[0];var p=results[1];
-        // Guard against null/empty responses
-        if(!q||!p||typeof q!=='object'||typeof p!=='object')continue;
-        var mc=p.marketCapitalization||0;
-        var price=q.c||0;
-        var vol=q.v||0;
+      var q=await fh('/quote?symbol='+ticker,key);
+      var p=await fh('/stock/profile2?symbol='+ticker,key);
 
-        // Log what we find so we can diagnose
-        if(mc>0&&mc<1000){
-          log('P1 checking: '+ticker+' cap='+fmtCap(mc)+' price=$'+price.toFixed(2),'g');
-        }
+      if(!q||!p||typeof q!=='object'||typeof p!=='object')continue;
 
-        // Skip if no market cap data at all
-        if(!mc)continue;
+      var mc=p.marketCapitalization||0;
+      var price=q.c||0;
+      var vol=q.v||0;
 
-        // For insider stocks, skip strict price filter
-        // Finnhub sometimes returns $0 for thinly traded stocks
-        // but if an insider is buying it the company is real
-        // Only require minimum volume if we have volume data
-        if(vol>0&&vol<minVol)continue;
+      if(!mc)continue;
 
-        var isNano=mc>2&&mc<50;
-        var isMicro=mc>=50&&mc<=300;
-        if(caprange==='nano'&&!isNano)continue;
-        if(caprange==='micro'&&!isMicro)continue;
-        if(caprange==='both'&&!isNano&&!isMicro)continue;
+      // Log micro/nano candidates
+      if(mc>0&&mc<=300){
+        log('P1 checking: '+ticker+' cap='+fmtCap(mc)+' price=$'+(price||0).toFixed(2),'g');
+      }
 
-        if(sector!=='all'){
-          var ind=(p.finnhubIndustry||'').toLowerCase();
-          var keys=sectorMap[sector]||[];
-          if(!keys.some(function(k){return ind.includes(k);}))continue;
-        }
+      // Skip if volume data exists but is too low
+      if(vol>0&&vol<minVol)continue;
 
-        combinedPool[ticker]={
-          sym:ticker,name:p.name||ticker,
-          ind:p.finnhubIndustry||'N/A',
-          mc,price,chg:q.dp||0,vol,
-          type:isNano?'nano':'micro',
-          exch:p.exchange||'',
-          source:'insider',
-          m:{},ins:[],news:[],score:0,reasons:[]
-        };
-        insiderCount++;
-        setSV('insider',insiderCount);
-        log('P1 ✓ '+ticker+' — '+fmtCap(mc)+' | '+( p.finnhubIndustry||'N/A'),'g');
-      }catch(e){/* skip — timeout or not found */}
+      var isNano=mc>2&&mc<50;
+      var isMicro=mc>=50&&mc<=300;
+      if(caprange==='nano'&&!isNano)continue;
+      if(caprange==='micro'&&!isMicro)continue;
+      if(caprange==='both'&&!isNano&&!isMicro)continue;
+
+      if(sector!=='all'){
+        var ind=(p.finnhubIndustry||'').toLowerCase();
+        var keys=sectorMap[sector]||[];
+        if(!keys.some(function(k){return ind.includes(k);}))continue;
+      }
+
+      combinedPool[ticker]={
+        sym:ticker,name:p.name||ticker,
+        ind:p.finnhubIndustry||'N/A',
+        mc:mc,price:price,chg:q.dp||0,vol:vol,
+        type:isNano?'nano':'micro',
+        exch:p.exchange||'',
+        source:'insider',
+        m:{},ins:[],news:[],score:0,reasons:[]
+      };
+      insiderCount++;
+      setSV('insider',insiderCount);
+      log('P1 ✓ '+ticker+' — '+fmtCap(mc)+' | '+(p.finnhubIndustry||'N/A'),'g');
     }
 
-    log('Pipeline 1 complete: '+insiderCount+' insider-buy micro/nano cap stocks found','g');
+    log('Pipeline 1 complete: '+insiderCount+' insider-buy micro/nano cap stocks','g');
 
-    // ════════════════════════════════════════════
-    // PIPELINE 2 — Fundamental Value Screener
-    // Uses Finnhub screener to target micro/nano
-    // cap stocks directly — no random sampling
-    // ════════════════════════════════════════════
+    // ── PIPELINE 2: Fundamental Value Screener ──────────────
     log('━━━ PIPELINE 2: Fundamental Value Screener ━━━','b');
-    log('Using Finnhub screener to find micro/nano cap stocks directly...','b');
 
-    var fundamentalCount=0;
-    var MAX_FUNDAMENTAL=60;
-
-    try{
-      // Finnhub stock screener — filters by market cap range directly
-      // This means EVERY stock returned is already micro or nano cap
-      // No wasted API calls on large cap stocks
-      var capMin = caprange==='micro' ? 50 : 2;
-      var capMax = caprange==='nano'  ? 50 : 300;
-
-      // Build screener query — market cap in millions
-      var screenerPath = '/stock/symbol?exchange=US';
-      var allSyms = await fh(screenerPath, key);
-
-      // Filter to common stocks on target exchanges
-      var commonSyms = allSyms.filter(function(s){
-        return s.type==='Common Stock' && s.mic &&
-               mic.some(function(m){return s.mic.includes(m);});
+    var allSyms=await fh('/stock/symbol?exchange=US',key);
+    if(!allSyms||!Array.isArray(allSyms)){
+      log('Could not fetch symbol list','a');
+    } else {
+      var commonSyms=allSyms.filter(function(s){
+        return s.type==='Common Stock'&&s.mic&&mic.some(function(m){return s.mic.includes(m);});
       });
 
-      // Shuffle for diversity
-      var shuffled2 = commonSyms.sort(function(){return Math.random()-0.5;});
-      log('Pipeline 2 — '+shuffled2.length+' common stocks in universe. Fetching quotes in batches...','b');
+      var shuffled=commonSyms.sort(function(){return Math.random()-0.5;});
+      log('Pipeline 2 — scanning for micro/nano cap fundamentals...','b');
 
-      // Process in batches of 5 simultaneously for speed
-      // but stay within Finnhub free tier limits
+      var fundamentalCount=0;
       var scanned2=0;
-      var batchSize=5;
+      var MAX_FUND=60;
 
-      for(var j=0;j<shuffled2.length&&fundamentalCount<MAX_FUNDAMENTAL;j+=batchSize){
-        var batch=shuffled2.slice(j,j+batchSize).filter(function(s){
-          return !combinedPool[s.symbol];
-        });
-        if(!batch.length)continue;
+      for(var j=0;j<shuffled.length&&fundamentalCount<MAX_FUND;j++){
+        var sym2=shuffled[j];
+        if(combinedPool[sym2.symbol])continue;
+        scanned2++;
 
-        // Fetch quotes for entire batch simultaneously
-        var batchResults=await Promise.allSettled(
-          batch.map(function(sym){
-            return Promise.all([
-              fh('/quote?symbol='+sym.symbol,key),
-              fh('/stock/profile2?symbol='+sym.symbol,key)
-            ]).then(function(res){return{sym:sym,q:res[0],p:res[1]};});
-          })
-        );
-
-        batchResults.forEach(function(result){
-          if(result.status!=='fulfilled')return;
-          var val=result.value;
-          if(!val||!val.q||!val.p)return;
-          var sym=val.sym;
-          var q2=val.q;
-          var p2=val.p;
-          if(typeof q2!=='object'||typeof p2!=='object')return;
-          scanned2++;
-
-          var mc2=p2.marketCapitalization||0;
-          var price2=q2.c||0;
-          var vol2=q2.v||0;
-
-          if(price2<0.50||vol2<minVol)return;
-
-          // Strict cap filter
-          var isNano2=mc2>2&&mc2<50;
-          var isMicro2=mc2>=50&&mc2<=300;
-          if(caprange==='nano'&&!isNano2)return;
-          if(caprange==='micro'&&!isMicro2)return;
-          if(caprange==='both'&&!isNano2&&!isMicro2)return;
-
-          // Sector filter
-          if(sector!=='all'){
-            var ind2=(p2.finnhubIndustry||'').toLowerCase();
-            var keys2=sectorMap[sector]||[];
-            if(!keys2.some(function(k){return ind2.includes(k);}))return;
-          }
-
-          if(combinedPool[sym.symbol])return;
-
-          combinedPool[sym.symbol]={
-            sym:sym.symbol,name:p2.name||sym.symbol,
-            ind:p2.finnhubIndustry||'N/A',
-            mc:mc2,price:price2,chg:q2.dp||0,vol:vol2,
-            type:isNano2?'nano':'micro',
-            exch:p2.exchange||'',
-            source:'fundamental',
-            m:{},ins:[],news:[],score:0,reasons:[]
-          };
-          fundamentalCount++;
-          setSV('fundamental',fundamentalCount);
-        });
-
-        // Progress update every 50 scanned
-        if(scanned2%50===0){
-          log('Pipeline 2 — scanned '+scanned2+' | found '+fundamentalCount+' micro/nano cap stocks','b');
+        if(scanned2%20===0){
+          log('P2 — scanned '+scanned2+' | found '+fundamentalCount+' micro/nano cap','b');
+          await sleep(500);
         }
 
-        // Small delay every batch to avoid rate limiting
-        await sleep(500);
+        var q2=await fh('/quote?symbol='+sym2.symbol,key);
+        var p2=await fh('/stock/profile2?symbol='+sym2.symbol,key);
+
+        if(!q2||!p2||typeof q2!=='object'||typeof p2!=='object')continue;
+
+        var mc2=p2.marketCapitalization||0;
+        var price2=q2.c||0;
+        var vol2=q2.v||0;
+
+        if(!mc2||price2<0.50||vol2<minVol)continue;
+
+        var isNano2=mc2>2&&mc2<50;
+        var isMicro2=mc2>=50&&mc2<=300;
+        if(caprange==='nano'&&!isNano2)continue;
+        if(caprange==='micro'&&!isMicro2)continue;
+        if(caprange==='both'&&!isNano2&&!isMicro2)continue;
+
+        if(sector!=='all'){
+          var ind2=(p2.finnhubIndustry||'').toLowerCase();
+          var keys2=sectorMap[sector]||[];
+          if(!keys2.some(function(k){return ind2.includes(k);}))continue;
+        }
+
+        combinedPool[sym2.symbol]={
+          sym:sym2.symbol,name:p2.name||sym2.symbol,
+          ind:p2.finnhubIndustry||'N/A',
+          mc:mc2,price:price2,chg:q2.dp||0,vol:vol2,
+          type:isNano2?'nano':'micro',
+          exch:p2.exchange||'',
+          source:'fundamental',
+          m:{},ins:[],news:[],score:0,reasons:[]
+        };
+        fundamentalCount++;
+        setSV('fundamental',fundamentalCount);
       }
 
-    }catch(e){
-      log('Pipeline 2 error: '+e.message,'a');
+      log('Pipeline 2 complete: '+fundamentalCount+' fundamental candidates added','b');
     }
-
-    log('Pipeline 2 complete: '+fundamentalCount+' fundamental candidates added','b');
 
     var poolArr=Object.values(combinedPool);
     setSV('combined',poolArr.length);
     log('Combined pool: '+poolArr.length+' unique micro/nano cap companies','p');
 
     if(!poolArr.length){
-      log('No companies found. Try relaxing filters.','a');
+      log('No companies found. Try relaxing filters or increasing lookback period.','a');
       btn.disabled=false;btn.textContent='▶ RUN DUAL PIPELINE SCAN';
       return;
     }
 
-    // ════════════════════════════════════════════
-    // DEEP FUNDAMENTALS + VALUE SCORING
-    // ════════════════════════════════════════════
+    // ── DEEP SCORING ────────────────────────────────────────
     log('━━━ DEEP SCORING: Fetching full fundamentals ━━━','p');
     var qualified=[];
     var scored=0;
 
     for(var k=0;k<poolArr.length;k++){
       var c=poolArr[k];
-      try{
-        var deep=await Promise.all([
-          fh('/stock/metric?symbol='+c.sym+'&metric=all',key),
-          fh('/stock/insider-transactions?symbol='+c.sym,key),
-          fh('/company-news?symbol='+c.sym+'&from='+getPast(45)+'&to='+getPast(0),key)
-        ]);
-        c.m=deep[0].metric||{};
-        c.ins=(deep[1].data||[]).slice(0,10);
-        c.news=(deep[2]||[]).slice(0,6);
+      var metrics=await fh('/stock/metric?symbol='+c.sym+'&metric=all',key);
+      var insiders=await fh('/stock/insider-transactions?symbol='+c.sym,key);
+      var news=await fh('/company-news?symbol='+c.sym+'&from='+getPast(45)+'&to='+getPast(0),key);
 
-        var qualifies=scoreForValue(c,minGrowth,minMargin,maxDE);
-        scored++;
-        setSV('scored',scored);
+      c.m=(metrics&&metrics.metric)?metrics.metric:{};
+      c.ins=(insiders&&insiders.data)?insiders.data.slice(0,10):[];
+      c.news=Array.isArray(news)?news.slice(0,6):[];
 
-        if(qualifies){
-          qualified.push(c);
-          log(c.sym+' ✓ ['+c.source.toUpperCase()+'] score:'+c.score+' signals:['+c.reasons.join(',')+']','g');
-        }
-      }catch(e){
-        c.m={};c.ins=[];c.news=[];c.score=0;c.reasons=[];
+      var qualifies=scoreForValue(c,minGrowth,minMargin,maxDE);
+      scored++;
+      setSV('scored',scored);
+
+      if(qualifies){
+        qualified.push(c);
+        log(c.sym+' ✓ ['+c.source.toUpperCase()+'] score:'+c.score+' ['+c.reasons.join(',')+']','g');
       }
     }
 
     if(!qualified.length){
-      log('No companies passed value scoring. Try relaxing thresholds.','a');
+      log('No stocks passed value scoring. Try relaxing thresholds.','a');
       btn.disabled=false;btn.textContent='▶ RUN DUAL PIPELINE SCAN';
       return;
     }
@@ -732,18 +624,17 @@ async function runScan(){
     setSV('selected',selected.length);
 
     log('━━━ SCAN COMPLETE ━━━','g');
-    log('Found '+qualified.length+' value opportunities. Top '+selected.length+' selected for Claude.','g');
-    log('Top picks: '+selected.map(function(c){return c.sym+'('+c.score+'pts)['+c.source+']';}).join(' | '),'g');
+    log('Found '+qualified.length+' opportunities. Top '+selected.length+' selected.','g');
+    log('Top picks: '+selected.map(function(c){return c.sym+'('+c.score+'pts)';}).join(' | '),'g');
 
     renderTable(qualified,selected.map(function(s){return s.sym;}));
-
     var packetText=buildPacket(selected,date,sector,caprange,minGrowth,minMargin,maxDE);
     document.getElementById('pack-body').textContent=packetText;
     document.getElementById('packet').style.display='block';
     document.getElementById('paste-prompt').textContent=buildPastePrompt();
     document.getElementById('paste-box').style.display='block';
     document.getElementById('sv-time').textContent=new Date().toTimeString().slice(0,5);
-    log('Ready. Copy the packet and paste into your Claude Project.','g');
+    log('Done. Copy the packet and paste into your Claude Project.','g');
 
   }catch(e){
     log('Error: '+e.message,'r');
@@ -768,7 +659,7 @@ function renderTable(qualified,selSyms){
       '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">'+c.name+'</td>'+
       '<td><span class="badge '+c.type+'">'+c.type.toUpperCase()+'</span></td>'+
       '<td>'+srcBadge+'</td>'+
-      '<td>$'+c.price.toFixed(2)+'</td>'+
+      '<td>$'+(c.price||0).toFixed(2)+'</td>'+
       '<td>'+fmtCap(c.mc)+'</td>'+
       '<td style="color:var(--green)">'+fmtN(c.m?c.m.revenueGrowthTTMYoy:null)+'%</td>'+
       '<td>'+fmtN(c.m?c.m.grossMarginTTM:null)+'%</td>'+
@@ -781,8 +672,7 @@ function renderTable(qualified,selSyms){
       '<td><span class="badge '+(isSel?'sel':'watch')+'">'+(isSel?'TOP PICK':'WATCH')+'</span></td>';
     tbody.appendChild(tr);
   });
-  document.getElementById('cand-sub').textContent=
-    qualified.length+' value opportunities | top '+selSyms.length+' selected for Claude research';
+  document.getElementById('cand-sub').textContent=qualified.length+' opportunities | top '+selSyms.length+' selected for Claude';
   document.getElementById('cands').style.display='block';
 }
 
@@ -791,15 +681,12 @@ function buildPacket(selected,date,sector,caprange,minGrowth,minMargin,maxDE){
   out+='APEX/SCAN — LONG-TERM VALUE RESEARCH PACKET\n';
   out+='Date: '+date+'\n';
   out+='Sector: '+sector.toUpperCase()+' | Cap: '+caprange.toUpperCase()+' | Picks: '+selected.length+'\n';
-  out+='Criteria: '+minGrowth+'%+ revenue growth | '+minMargin+'%+ gross margin | D/E under '+maxDE+'x\n';
-  out+='Sources: SEC EDGAR insider feed + Finnhub fundamental screener\n';
+  out+='Sources: SEC EDGAR Form 4 insider feed + Finnhub fundamental screener\n';
   out+='════════════════════════════════════════════════════════\n\n';
   out+='INVESTMENT PHILOSOPHY:\n';
-  out+='These are NOT day trades or short-term plays.\n';
-  out+='Time horizon: 2-5 years minimum.\n';
+  out+='These are NOT day trades. Time horizon: 2-5 years minimum.\n';
   out+='Strategy: Find overlooked, fundamentally strong micro/nano cap\n';
-  out+='companies before institutional investors discover them.\n';
-  out+='Hold through the noise. Sell only when the thesis breaks.\n\n';
+  out+='companies before institutional investors discover them.\n\n';
 
   var reasonLabels={ins:'Insider Buying',rev:'Revenue Growth',val:'Valuation Gap',bal:'Strong Balance Sheet',mgn:'High Gross Margin',cat:'Recent Catalyst'};
 
@@ -808,8 +695,7 @@ function buildPacket(selected,date,sector,caprange,minGrowth,minMargin,maxDE){
     var buys=(c.ins||[]).filter(function(i){return(i.transactionType||'').toLowerCase().includes('buy');});
     var sells=(c.ins||[]).filter(function(i){return(i.transactionType||'').toLowerCase().includes('sell');});
     var newsLines=(c.news||[]).map(function(n,i){
-      return'  '+(i+1)+'. ['+new Date((n.datetime||0)*1000).toLocaleDateString()+'] '+n.headline+
-             '\n     Source: '+(n.source||'N/A')+' — '+(n.url||'N/A');
+      return'  '+(i+1)+'. ['+new Date((n.datetime||0)*1000).toLocaleDateString()+'] '+n.headline+'\n     Source: '+(n.source||'N/A')+' — '+(n.url||'N/A');
     }).join('\n')||'  No recent news found.';
 
     out+='────────────────────────────────────────────────────────\n';
@@ -818,43 +704,32 @@ function buildPacket(selected,date,sector,caprange,minGrowth,minMargin,maxDE){
     out+='Source: '+(c.source==='insider'?'PIPELINE 1 — Insider Buy Detected':'PIPELINE 2 — Fundamental Screen')+'\n';
     out+='Type: '+c.type.toUpperCase()+' CAP | Industry: '+c.ind+' | Exchange: '+c.exch+'\n';
     out+='Why It Qualified: '+(c.reasons||[]).map(function(r){return reasonLabels[r]||r;}).join(' + ')+'\n\n';
-
     out+='── PRICE & MARKET ───────────────────────────────────────\n';
-    out+='Current Price:          $'+c.price.toFixed(2)+'\n';
+    out+='Current Price:          $'+(c.price||0).toFixed(2)+'\n';
     out+='Market Cap:             '+fmtCap(c.mc)+'\n';
-    out+='Volume (Today):         '+c.vol.toLocaleString()+' shares\n\n';
-
+    out+='Volume (Today):         '+(c.vol||0).toLocaleString()+' shares\n\n';
     out+='── GROWTH & PROFITABILITY ───────────────────────────────\n';
     out+='Revenue Growth YoY:     '+fmtN(m.revenueGrowthTTMYoy)+'%\n';
     out+='Gross Margin:           '+fmtN(m.grossMarginTTM)+'%\n';
     out+='Net Profit Margin:      '+fmtN(m.netProfitMarginTTM)+'%\n';
     out+='Return on Equity:       '+fmtN(m.roeTTM)+'%\n\n';
-
     out+='── VALUATION ────────────────────────────────────────────\n';
     out+='P/E Ratio (TTM):        '+fmtN(m.peExclExtraTTM)+'\n';
     out+='Price/Book:             '+fmtN(m.pbQuarterly,2)+'\n';
     out+='Price/Sales (TTM):      '+fmtN(m.psTTM,2)+'\n\n';
-
     out+='── BALANCE SHEET ────────────────────────────────────────\n';
     out+='Debt / Equity:          '+fmtN(m['totalDebt/totalEquityQuarterly'],2)+'\n';
     out+='Current Ratio:          '+fmtN(m.currentRatioQuarterly,2)+'\n\n';
-
     out+='── 52-WEEK PERFORMANCE ──────────────────────────────────\n';
     out+='52-Week Return:         '+fmtN(m['52WeekPriceReturnDaily'])+'%\n';
     out+='52-Week High:           $'+fmtN(m['52WeekHigh'],2)+'\n';
     out+='52-Week Low:            $'+fmtN(m['52WeekLow'],2)+'\n';
     out+='Beta:                   '+fmtN(m.beta,2)+'\n\n';
-
     out+='── INSIDER TRANSACTIONS (last 90 days) ──────────────────\n';
     out+='Buys:  '+buys.length+' transaction'+(buys.length!==1?'s':'')+'\n';
-    out+=(buys.length?buys.map(function(b){
-      return'  → '+(b.name||'Unknown')+' bought '+(b.share||0).toLocaleString()+' shares on '+(b.transactionDate||'N/A');
-    }).join('\n'):'  None on record')+'\n';
+    out+=(buys.length?buys.map(function(b){return'  → '+(b.name||'Unknown')+' bought '+(b.share||0).toLocaleString()+' shares on '+(b.transactionDate||'N/A');}).join('\n'):'  None on record')+'\n';
     out+='Sells: '+sells.length+' transaction'+(sells.length!==1?'s':'')+'\n';
-    out+=(sells.length?sells.map(function(s){
-      return'  → '+(s.name||'Unknown')+' sold '+(s.share||0).toLocaleString()+' shares on '+(s.transactionDate||'N/A');
-    }).join('\n'):'  None on record')+'\n\n';
-
+    out+=(sells.length?sells.map(function(s){return'  → '+(s.name||'Unknown')+' sold '+(s.share||0).toLocaleString()+' shares on '+(s.transactionDate||'N/A');}).join('\n'):'  None on record')+'\n\n';
     out+='── RECENT NEWS & CATALYSTS (last 45 days) ───────────────\n';
     out+=newsLines+'\n\n';
   });
@@ -862,14 +737,13 @@ function buildPacket(selected,date,sector,caprange,minGrowth,minMargin,maxDE){
   out+='════════════════════════════════════════════════════════\n';
   out+='END OF RESEARCH PACKET\n';
   out+='Generated: '+new Date().toUTCString()+'\n';
-  out+='Sources: SEC EDGAR Form 4 feed + Finnhub.io live data\n';
-  out+='Engine: APEX/SCAN Dual Pipeline Value Discovery\n';
+  out+='Sources: SEC EDGAR Form 4 + Finnhub.io | APEX/SCAN\n';
   out+='════════════════════════════════════════════════════════';
   return out;
 }
 
 function buildPastePrompt(){
-  return'I am sending you a long-term value investing research packet generated by the APEX/SCAN dual pipeline engine.\n\nCRITICAL CONTEXT:\n- These are NOT day trades or short-term plays\n- Investment horizon: 2-5 years minimum\n- Strategy: Find overlooked micro/nano cap companies before institutional discovery\n- Some stocks came from SEC EDGAR insider buy filings (executives buying their own stock)\n- Others came from fundamental screening of the micro/nano cap universe\n\nFor each company, use web search to research deeply:\n\n1. BUSINESS FUNDAMENTALS\n   - What does this company actually do? Is the business model defensible?\n   - Who are the main competitors? Is this company winning or losing market share?\n   - What is the total addressable market? Is it growing?\n   - Revenue breakdown — what products/services drive growth?\n\n2. MANAGEMENT & OWNERSHIP\n   - Who runs this company? Track record?\n   - Insider ownership percentage — are they aligned with shareholders?\n   - Any recent insider buying or selling beyond what is in the packet?\n   - Institutional ownership — are any smart funds accumulating?\n\n3. FINANCIAL DEEP DIVE (SEC EDGAR)\n   - Read the latest 10-K and 10-Q filings\n   - Check for going concern language, auditor changes, or restatements\n   - Verify revenue growth is real — not from acquisitions or one-time items\n   - Check cash burn rate — how long can they operate without raising money?\n   - Any dilution history? Share count trend over last 3 years?\n\n4. CATALYST ANALYSIS\n   - What upcoming events could reprice this stock? Earnings, contracts, FDA, partnerships?\n   - Read all 8-K filings from last 6 months — what has management disclosed?\n   - Any analyst initiations or coverage changes?\n\n5. LONG-TERM THESIS QUESTIONS\n   - Can this company realistically be 3-5x larger in 5 years? Why?\n   - What is the path to profitability if not yet profitable?\n   - What is the biggest risk to this thesis? Be specific and honest.\n   - Is this cheap because it is overlooked or because something is wrong?\n\n6. SENTIMENT & MARKET AWARENESS\n   - Short interest — is there a credible bear thesis?\n   - Reddit, StockTwits, Seeking Alpha sentiment\n   - Any recent coverage from small cap newsletters or research firms?\n\nAUTO-DISQUALIFY if you find:\n   - Reverse stock splits in last 5 years\n   - Going concern opinion in recent filings\n   - Share count increase over 25% in any single year\n   - Auditor change without clear explanation\n   - SEC investigation or enforcement action\n   - Revenue that is fictional or from related parties\n\nPRODUCE THIS REPORT FORMAT:\n\n════════════════════════════════════════════════\nAPEX/SCAN — LONG-TERM VALUE REPORT\n[DATE] | 2-5 Year Investment Horizon\n════════════════════════════════════════════════\n\nMACRO CONTEXT\n[Current environment and how it affects micro/nano cap value investing]\n\n════════════════════════════════════════════════\nTOP CONVICTION BUY\n════════════════════════════════════════════════\nTICKER: [X] | COMPANY: [Name] | SECTOR: [Sector]\nCAP: $XXM | PRICE: $XX.XX | SOURCE: [Insider Buy / Fundamental Screen]\n\nTHE BUSINESS: [2-3 sentences — what they do and why the model is durable]\nTHE OPPORTUNITY: [Why is this undervalued? What has the market missed?]\nGROWTH THESIS: [How does this company get 3-5x bigger over 5 years?]\n\nWHY BUY NOW:\n  • [Reason 1 — specific and sourced]\n  • [Reason 2]\n  • [Reason 3]\n\nFINANCIALS SNAPSHOT:\n  Revenue Growth:  XX% YoY\n  Gross Margin:    XX%\n  Net Margin:      XX%\n  Debt/Equity:     X.Xx\n  Current Ratio:   X.Xx\n  Insider Activity: [Specific transactions with names and amounts]\n\nVALUATION:\n  Current: $XX.XX\n  Fair Value Estimate: $XX.XX\n  Price Target (2-3yr): $XX.XX (XX% upside)\n  Downside if wrong: $XX.XX (XX% loss)\n\nSUGGESTED ENTRY: $XX.XX – $XX.XX\nSTOP LOSS: $XX.XX (thesis broken if this breaks)\nPOSITION SIZE: 3-5% of portfolio maximum\nHOLDING PERIOD: 2-5 years — review quarterly\n\nRISKS TO THESIS:\n  • [Risk 1 — be specific, not generic]\n  • [Risk 2]\n  • [Risk 3]\n\nQUARTERLY CHECKPOINTS:\n  • [What metric to watch each quarter to confirm thesis intact]\n  • [What would make you sell early]\n\nSOURCES SEARCHED:\n  • [Every source consulted — SEC filings, news, analysts, forums]\n\n════════════════════════════════════════════════\nADDITIONAL LONG-TERM OPPORTUNITIES\n════════════════════════════════════════════════\n[Repeat full format for each additional company]\n\n════════════════════════════════════════════════\nCOMPANIES TO AVOID\n════════════════════════════════════════════════\n[TICKER] — [Specific red flag found. Cite the source.]\n\n════════════════════════════════════════════════\nDISCLAIMER: Research and educational purposes only. Not financial advice. Micro and nano cap stocks carry elevated risk including illiquidity, high volatility, and potential for total loss of investment. Never invest more than you can afford to lose. Always do your own due diligence.\n════════════════════════════════════════════════\n\nHere is the research packet:\n\n[PASTE PACKET HERE]';
+  return'I am sending you a long-term value investing research packet generated by APEX/SCAN.\n\nCRITICAL CONTEXT:\n- These are NOT day trades\n- Investment horizon: 2-5 years minimum\n- Some stocks came from SEC EDGAR insider buy filings\n- Others came from fundamental screening of the micro/nano cap universe\n\nFor each company research deeply using web search:\n1. SEC EDGAR — latest 10-K, 10-Q, all recent 8-K filings\n2. Management team track record and insider ownership\n3. Competitive landscape — is this company winning market share\n4. Revenue quality — is growth real or from one-time items\n5. Cash position and burn rate\n6. Any upcoming catalysts\n7. Short interest and bear thesis\n8. Reddit, StockTwits, Seeking Alpha sentiment\n\nAuto-disqualify if you find:\n- Reverse stock splits in last 5 years\n- Going concern opinion\n- Share dilution over 25% in any single year\n- Auditor change without explanation\n- SEC investigation\n\nWrite the full report in the format from your project instructions.\n\nHere is the research packet:\n\n[PASTE PACKET HERE]';
 }
 
 function copyPacket(){
