@@ -645,13 +645,21 @@ async function runScan() {
       } catch(e) { /* skip */ }
     }
 
-    // Add P1-only tickers (not found in P2 sample) — fetch their profiles
-    var p1OnlySyms = p1Tickers.filter(function(t) {
-      return !p2Cands.some(function(c) { return c.sym === t.sym; });
-    });
-    log('[P1] Enriching ' + p1OnlySyms.length + ' insider tickers not in P2 sample...', 'p');
+    // Cross-reference P1 tickers against the full Finnhub universe (already fetched — free).
+    // This eliminates large caps before spending any API calls on enrichment.
+    var finnhubSymSet = {};
+    common.forEach(function(s) { finnhubSymSet[s.symbol] = true; });
 
-    for (var pi = 0; pi < Math.min(p1OnlySyms.length, 50); pi++) {
+    var p1OnlySyms = p1Tickers.filter(function(t) {
+      if (p2Cands.some(function(c) { return c.sym === t.sym; })) return false;
+      return !!finnhubSymSet[t.sym];  // must exist in Finnhub common stock universe
+    });
+
+    // Shuffle for variety, cap at 80 to keep runtime reasonable
+    p1OnlySyms = p1OnlySyms.sort(function() { return Math.random() - 0.5; }).slice(0, 80);
+    log('[P1] ' + p1OnlySyms.length + ' insider tickers in Finnhub universe — checking caps...', 'p');
+
+    for (var pi = 0; pi < p1OnlySyms.length; pi++) {
       var ps = p1OnlySyms[pi].sym;
       try {
         var pr2 = await Promise.all([
@@ -680,7 +688,7 @@ async function runScan() {
           exch: pp.exchange || '',
           source: 'insider'
         });
-        log('[P1] Added ' + ps + ' — $' + pprice.toFixed(2) + ' ' + fmtCap(pmc), 'p');
+        log('[P1] ✓ ' + ps + ' $' + pprice.toFixed(2) + ' ' + fmtCap(pmc), 'p');
       } catch(e) { /* skip */ }
     }
 
