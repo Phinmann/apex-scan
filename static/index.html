@@ -336,221 +336,128 @@ async function fh(path, key, retries) {
   }
 }
 
-// ── SEC EDGAR proxy (backend route /api/sec/edgar → efts.sec.gov) ──────────
-async function edgar(path, retries) {
+// ── Backend proxy helpers ──────────────────────────────────────────────────
+// /api/sec/edgar → efts.sec.gov  (EDGAR full-text search)
+// /api/sec/www   → www.sec.gov   (ticker maps, daily indexes)
+async function secFetch(route, path, retries) {
   retries = (retries !== undefined) ? retries : 2;
-  var url = '/api/sec/edgar?path=' + encodeURIComponent(path);
+  var url = route + '?path=' + encodeURIComponent(path);
   for (var i = 0; i <= retries; i++) {
     try {
       var r = await fetch(url);
       if (r.status === 429) { await sleep(2000); continue; }
-      if (!r.ok) throw new Error('EDGAR HTTP ' + r.status);
-      return await r.json();
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      // www route returns text/plain for index files, JSON for ticker map
+      var ct = r.headers.get('content-type') || '';
+      if (ct.includes('json')) return await r.json();
+      return await r.text();
     } catch(e) {
       if (i === retries) throw e;
-      await sleep(1000);
+      await sleep(800);
     }
   }
 }
+var edgar  = function(p, r) { return secFetch('/api/sec/edgar', p, r); };
+var secWww = function(p, r) { return secFetch('/api/sec/www',   p, r); };
 
-// ── PIPELINE 1 — SEC EDGAR Form 4 open-market insider buys ────────────────
+// ── PIPELINE 1 — SEC EDGAR Form 4 insider buys ────────────────────────────
 //
-// Step 1: Fetch https://www.sec.gov/files/company_tickers.json directly from
-//         the browser — this file has CORS enabled (it's a public .gov file).
-//         Structure: {"0":{"cik_str":1045810,"ticker":"NVDA","title":"NVIDIA CORP"}, ...}
-//         cik_str is an INTEGER (not a string), ticker is the exchange symbol.
+// Strategy:
+//   Step 1 — Load www.sec.gov/files/company_tickers.json via backend proxy.
+//             Maps CIK (int) → ticker symbol for every US listed company.
 //
-// Step 2: Fetch Form 4 filings from EDGAR EFTS via the backend proxy.
-//         Each hit._id = "0001234567-24-001234:doc.xml" — the first 10 digits
-//         are the FILER's CIK (the insider, not the company). But Form 4 also
-//         has the issuer CIK in _source. We use file_num which encodes the
-//         registrant, OR we pull from the EDGAR daily index which has both
-//         issuer and filer CIKs separated.
+//   Step 2 — Fetch the EDGAR quarterly master index (plain text, pipe-delimited).
+//             URL: /Archives/edgar/full-index/YYYY/QTRN/company.gz  (too large)
+//             Better: the DAILY index for recent days, one file per day.
+//             Format: CIK|Company Name|Form Type|Date Filed|Filename
+//             For Form 4, the CIK column = the ISSUER (company), not the insider.
+//             This is the key difference from the EFTS search index.
 //
-// Step 3: For each resolved issuer CIK, look up ticker in our map.
+//   Step 3 — Filter rows where Form Type = "4", look up CIK in ticker map,
+//             collect unique issuer tickers.
 //
 async function runPipeline1(windowDays, minBuyValue) {
   var fromDate = getPast(windowDays);
   var toDate   = getPast(0);
   var results  = [];
+  var seen     = {};
 
-  // ── Step 1: Load CIK → ticker map directly from SEC (CORS-enabled) ────
-  log('[P1] Loading SEC ticker map from www.sec.gov...', 'p');
+  // ── Step 1: CIK → ticker map via backend proxy ────────────────────────
+  log('[P1] Loading SEC ticker map...', 'p');
   var cikToTicker = {};
   try {
-    // Direct browser fetch — www.sec.gov/files/ serves with CORS headers
-    var r = await fetch('https://www.sec.gov/files/company_tickers.json');
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    var tickerData = await r.json();
-    // Structure: index → {cik_str: INT, ticker: "NVDA", title: "..."}
+    var tickerData = await secWww('/files/company_tickers.json');
+    // Response is JSON: {"0":{"cik_str":1045810,"ticker":"NVDA","title":"..."},...}
+    if (typeof tickerData === 'string') tickerData = JSON.parse(tickerData);
     Object.values(tickerData).forEach(function(co) {
       if (co.cik_str != null && co.ticker) {
-        cikToTicker[co.cik_str] = co.ticker.toUpperCase();  // cik_str is already int
+        cikToTicker[parseInt(co.cik_str, 10)] = co.ticker.toUpperCase();
       }
     });
-    log('[P1] Ticker map: ' + Object.keys(cikToTicker).length + ' companies loaded.', 'p');
+    log('[P1] Ticker map: ' + Object.keys(cikToTicker).length + ' companies.', 'p');
   } catch(e) {
-    log('[P1] Ticker map failed (' + e.message + '). P1 skipped.', 'a');
+    log('[P1] Ticker map failed: ' + e.message, 'r');
     return [];
   }
 
-  // ── Step 2: Fetch Form 4 filings via backend proxy ─────────────────────
-  log('[P1] Querying EDGAR Form 4 filings ' + fromDate + ' → ' + toDate + '...', 'p');
+  // ── Step 2: EDGAR daily master index — one file per recent day ─────────
+  // URL pattern: /Archives/edgar/daily-index/YYYY/QTRN/master.YYYYMMDD.idx
+  // These are pipe-delimited: CIK|Company Name|Form Type|Date Filed|Filename
+  // The CIK here is the REGISTRANT (issuer), exactly what we need.
+  log('[P1] Fetching EDGAR daily master indexes...', 'p');
 
-  var seen = {};
+  var now  = new Date();
+  var year = now.getFullYear();
+  var qtr  = Math.ceil((now.getMonth() + 1) / 3);
 
-  // The EFTS _id encodes the FILER (insider) CIK, not the issuer (company) CIK.
-  // However, _source.file_num = "001-XXXXX" (SEC file number for the registrant).
-  // The most reliable field is _source.entity_name — but it's the FILER name (person).
-  // 
-  // The correct field is actually built into the accession number differently for
-  // Form 4: the CIK in the _id IS the filer (insider person), not the company.
-  // We need the issuer CIK. Two ways to get it:
-  //   A) The EDGAR submissions API: data.sec.gov/submissions/CIK{filerCIK}.json
-  //      has recentFilings which shows the issuerCIK for each Form 4.
-  //   B) The daily master index: www.sec.gov/Archives/edgar/daily-index/YYYY/QTR/master.idx
-  //      has columns: CIK | Company Name | Form Type | Date | Filename
-  //      For Form 4, CIK is the FILER. The issuer is in the filing XML itself.
-  //
-  // BEST PRACTICAL APPROACH: use the EDGAR company search for Form 4 issuers.
-  // The EFTS endpoint supports searching by issuer via the q parameter.
-  // We'll fetch batches and extract the file_num (registrant SEC file number),
-  // then use the SEC company search to map file_num → CIK → ticker.
-  //
-  // SIMPLEST WORKING APPROACH: use the EDGAR daily master index which lists
-  // Form 4 filings with the CIK of the REGISTRANT (issuer), not the filer.
-  // URL: https://www.sec.gov/Archives/edgar/daily-index/{YEAR}/QTR{Q}/company.idx
-  // This is plain text but parseable.
-
-  try {
-    var allHits = [];
-    // Fetch 4 pages of 10 from EFTS — gives us 40 recent Form 4 filers
-    for (var p = 0; p < 4; p++) {
-      try {
-        var data = await edgar(
-          '/LATEST/search-index?forms=4&dateRange=custom' +
-          '&startdt=' + fromDate + '&enddt=' + toDate +
-          '&from=' + (p * 10)
-        );
-        var batch = (data.hits && data.hits.hits) ? data.hits.hits : [];
-        allHits = allHits.concat(batch);
-        if (p === 0) {
-          var total = (data.hits && data.hits.total) ? data.hits.total.value : 0;
-          log('[P1] ~' + total + ' Form 4 filings in window. Resolving issuers...', 'p');
-        }
-        if (batch.length < 10) break;
-        await sleep(250);
-      } catch(pe) { break; }
-    }
-
-    log('[P1] Processing ' + allHits.length + ' filings. Looking up issuer CIKs...', 'p');
-
-    // For each Form 4, the filer CIK (insider) is in _id prefix.
-    // We fetch their submissions JSON to find the issuerCIK from recent Form 4s.
-    // data.sec.gov/submissions/CIK{10digits}.json → recentFilings → issuerCIK
-    // This goes through the existing /api/sec/edgar proxy but to data.sec.gov —
-    // BUT the edgar proxy only hits efts.sec.gov. We need a different approach.
-    //
-    // WORKING SOLUTION: fetch the issuer CIK from the Form 4 filing XML header.
-    // Each Form 4 _id gives us the accession path. The filing index lists the
-    // REGISTRANT (issuer) CIK separately from the FILER (insider) CIK.
-    // 
-    // Accession: 0001234567-24-001234  → filer CIK = 1234567
-    // Filing index URL: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1234567&type=4
-    //   — too slow per filer.
-    //
-    // PRACTICAL SHORTCUT: the file_num field in _source = "001-XXXXX" format
-    // = the SEC registrant file number. We can map file_num → CIK via:
-    // https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&filenum=001-XXXXX&type=4&output=atom
-    // But this is also slow.
-    //
-    // FASTEST CORRECT APPROACH: Use Finnhub's insider endpoint we already have.
-    // The EFTS gives us issuer names in entity_name — but that's the filer name.
-    // 
-    // REAL ANSWER: Look at the _source.period_of_report and file_num together.
-    // file_num "000-XXXXX" or "001-XXXXX" can be looked up at:
-    // https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&filenum=FILE_NUM&output=atom
-    //
-    // SIMPLEST CORRECT PATH THAT ACTUALLY WORKS:
-    // The EDGAR EFTS now returns 'ticker_symbol' in _source for many filings.
-    // Let's check all available _source fields and use whatever has ticker data.
-
-    var tickersFound = 0;
-    allHits.forEach(function(h) {
-      var src = h._source || {};
-
-      // Try every field that might have a ticker
-      var ticker = null;
-
-      // 1. ticker_symbol — present in newer EFTS responses
-      if (src.ticker_symbol) {
-        ticker = String(src.ticker_symbol).toUpperCase().trim();
-      }
-
-      // 2. file_num: "000-55123" → strip prefix, search ticker map by file num
-      // (can't easily do this without another API call — skip)
-
-      // 3. entity_name may be "COMPANY NAME (TICKER)" in some filings
-      if (!ticker && src.entity_name) {
-        var m = String(src.entity_name).match(/\(([A-Z]{1,5})\)\s*$/);
-        if (m) ticker = m[1];
-      }
-
-      // 4. Parse issuer CIK from the _id if it encodes issuer not filer
-      // In Form 4, the CIK in accession = filer (insider). Skip this path.
-
-      if (!ticker) return;
-      if (!/^[A-Z]{1,5}$/.test(ticker)) return;  // sanity check — letters only
-      if (seen[ticker]) return;
-      seen[ticker] = true;
-      results.push({ sym: ticker, source: 'insider',
-                     filingDate: src.file_date || toDate });
-      tickersFound++;
-    });
-
-    // If EFTS ticker_symbol field didn't work, fall back to the daily master index
-    // The daily master index lists: CIK|Company|FormType|Date|Filename
-    // For Form 4, the CIK = REGISTRANT (issuer company) — this is what we want.
-    if (tickersFound === 0) {
-      log('[P1] EFTS fields had no tickers. Trying EDGAR daily index...', 'a');
-      try {
-        var now = new Date();
-        var year = now.getFullYear();
-        var qtr = Math.ceil((now.getMonth() + 1) / 3);
-        // company.idx lists Form 4s with the REGISTRANT CIK
-        var idxResp = await fetch(
-          'https://www.sec.gov/Archives/edgar/daily-index/' + year + '/QTR' + qtr + '/company.idx'
-        );
-        if (idxResp.ok) {
-          var idxText = await idxResp.text();
-          var lines = idxText.split('\n');
-          // Format: Company Name         Form Type  Date Filed  Filename
-          // We want Form 4 lines, extract CIK from filename path
-          // Filename: edgar/data/CIK/accession.txt
-          lines.forEach(function(line) {
-            if (!line.includes('4 ') && !line.includes('4\t')) return;
-            // Extract CIK from path edgar/data/XXXXXXX/
-            var cm = line.match(/edgar\/data\/(\d+)\//);
-            if (!cm) return;
-            var cik = parseInt(cm[1], 10);
-            var ticker = cikToTicker[cik];
-            if (!ticker || seen[ticker]) return;
-            seen[ticker] = true;
-            results.push({ sym: ticker, source: 'insider', filingDate: toDate });
-          });
-          log('[P1] Daily index: ' + results.length + ' issuer tickers found.', 'p');
-        }
-      } catch(idxErr) {
-        log('[P1] Daily index fallback failed: ' + idxErr.message, 'a');
-      }
-    }
-
-    log('[P1] Pipeline 1 complete: ' + results.length + ' tickers from Form 4 filings.', 'p');
-
-  } catch(e) {
-    log('[P1] Query error: ' + e.message, 'a');
+  // Build list of dates to try (skip weekends)
+  var datesToTry = [];
+  for (var d = 0; d < windowDays && datesToTry.length < 10; d++) {
+    var day = new Date(now);
+    day.setDate(day.getDate() - d);
+    if (day.getDay() === 0 || day.getDay() === 6) continue; // skip Sat/Sun
+    var mm = String(day.getMonth() + 1).padStart(2, '0');
+    var dd = String(day.getDate()).padStart(2, '0');
+    datesToTry.push(day.getFullYear() + mm + dd);
   }
 
+  var indexRowsProcessed = 0;
+
+  for (var di = 0; di < datesToTry.length; di++) {
+    var dateStr = datesToTry[di];
+    var idxPath = '/Archives/edgar/daily-index/' + year + '/QTR' + qtr +
+                  '/master.' + dateStr + '.idx';
+    try {
+      var text = await secWww(idxPath);
+      if (typeof text !== 'string' || text.length < 100) continue;
+
+      var lines = text.split('\n');
+      lines.forEach(function(line) {
+        // Format: CIK|Company Name|Form Type|Date Filed|Filename
+        var parts = line.split('|');
+        if (parts.length < 5) return;
+        var formType = parts[2].trim();
+        // Match "4" or "4/A" — the amended Form 4
+        if (formType !== '4' && formType !== '4/A') return;
+        var cik = parseInt(parts[0].trim(), 10);
+        if (!cik) return;
+        var ticker = cikToTicker[cik];
+        if (!ticker || seen[ticker]) return;
+        seen[ticker] = true;
+        results.push({ sym: ticker, source: 'insider', filingDate: parts[3].trim() });
+        indexRowsProcessed++;
+      });
+
+      if (results.length > 0) {
+        log('[P1] ' + dateStr + ': +' + Object.keys(seen).length + ' tickers so far.', 'p');
+      }
+      await sleep(150); // respect SEC rate limit (10 req/s)
+    } catch(e2) {
+      // Day index may not exist yet (e.g. today if filings haven't posted) — skip silently
+    }
+  }
+
+  log('[P1] Pipeline 1 complete: ' + results.length + ' Form 4 issuer tickers resolved.', 'p');
   return results;
 }
 
