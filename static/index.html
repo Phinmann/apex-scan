@@ -336,9 +336,7 @@ async function fh(path, key, retries) {
   }
 }
 
-// ── SEC EDGAR proxy (existing backend route /api/sec/edgar) ────────────────
-// app.py already has: @app.route('/api/sec/edgar') → proxies to https://efts.sec.gov
-// with proper User-Agent header so SEC doesn't block it.
+// ── SEC EDGAR proxy (backend route /api/sec/edgar → efts.sec.gov) ──────────
 async function edgar(path, retries) {
   retries = (retries !== undefined) ? retries : 2;
   var url = '/api/sec/edgar?path=' + encodeURIComponent(path);
@@ -355,76 +353,156 @@ async function edgar(path, retries) {
   }
 }
 
+// ── data.sec.gov proxy (backend route /api/sec/data → data.sec.gov) ────────
+// NOTE: app.py needs a second proxy route for data.sec.gov.
+// Add this to app.py:
+//   @app.route('/api/sec/data')
+//   def sec_data_proxy():
+//       path = request.args.get('path')
+//       if not path: return jsonify({'error': 'Missing path'}), 400
+//       try:
+//           url = 'https://data.sec.gov' + path
+//           r = requests.get(url, headers=SEC_HEADERS, timeout=20)
+//           return jsonify(r.json()), r.status_code
+//       except Exception as e:
+//           return jsonify({'error': str(e)}), 500
+async function secData(path, retries) {
+  retries = (retries !== undefined) ? retries : 2;
+  var url = '/api/sec/data?path=' + encodeURIComponent(path);
+  for (var i = 0; i <= retries; i++) {
+    try {
+      var r = await fetch(url);
+      if (r.status === 429) { await sleep(2000); continue; }
+      if (!r.ok) throw new Error('SEC data HTTP ' + r.status);
+      return await r.json();
+    } catch(e) {
+      if (i === retries) throw e;
+      await sleep(1000);
+    }
+  }
+}
+
 // ── PIPELINE 1 — SEC EDGAR Form 4 open-market insider buys ────────────────
-// Uses the Render backend proxy at /api/sec/edgar which sets the required
-// User-Agent header and routes to https://efts.sec.gov
-// Returns [{sym, name, insiderName, role, shares, price, value, date}]
+//
+// HOW IT WORKS (correct approach):
+//
+// Step 1 — Build a CIK→ticker map from the SEC's official company_tickers.json.
+//          This file is maintained by the SEC itself, maps every public company's
+//          CIK to its exchange ticker. It's ~2MB, free, no key required.
+//          Endpoint: data.sec.gov/submissions/company_tickers.json
+//
+// Step 2 — Fetch Form 4 filings from the EDGAR EFTS search index.
+//          The _source.entity_name field = company name (no ticker).
+//          The _id field contains the accession number which encodes the filer CIK:
+//          Format: "0001234567-24-001234:filing.xml"  → CIK = "0001234567"
+//          We strip leading zeros → CIK int → look up in our ticker map.
+//
+// Step 3 — Return the resolved tickers for downstream enrichment.
+//
 async function runPipeline1(windowDays, minBuyValue) {
   var fromDate = getPast(windowDays);
   var toDate   = getPast(0);
-  var found    = {};   // sym -> best transaction info
   var results  = [];
 
-  log('[P1] Querying SEC EDGAR Form 4 filings ' + fromDate + ' → ' + toDate + '...', 'p');
+  log('[P1] Loading SEC company ticker map...', 'p');
 
+  // ── Step 1: Build CIK → ticker lookup ─────────────────────────────────
+  var cikToTicker = {};
   try {
-    // EDGAR EFTS full-text search — returns Form 4 filing metadata
-    // The /LATEST/search-index endpoint accepts forms=4 to filter by form type
-    var data = await edgar(
-      '/LATEST/search-index?forms=4&dateRange=custom&startdt=' + fromDate +
-      '&enddt=' + toDate + '&hits.hits.total=true'
-    );
-
-    var hits = (data.hits && data.hits.hits) ? data.hits.hits : [];
-    var total = (data.hits && data.hits.total) ? (data.hits.total.value || hits.length) : hits.length;
-    log('[P1] ' + total + ' Form 4 filings in window. Extracting issuer tickers...', 'p');
-
-    // Each hit._source.display_names is an array like ["John Smith (ACME)", "ACME Corp (ACME)"]
-    // The issuer (company) entry has the ticker in parens. We parse all of them.
-    hits.forEach(function(h) {
-      var src = h._source || {};
-      var names = [].concat(src.display_names || []);
-      names.forEach(function(n) {
-        // Match "(TICK)" at end of name — issuer tickers are 1-5 uppercase letters
-        var m = String(n).match(/\(([A-Z]{1,5})\)\s*$/);
-        if (m && m[1] && !found[m[1]]) {
-          found[m[1]] = {
-            sym: m[1],
-            source: 'insider',
-            filingDate: src.file_date || toDate
-          };
+    // company_tickers.json: keys are indices, values are {cik_str, ticker, title}
+    var tickerData = await secData('/submissions/company_tickers.json');
+    Object.values(tickerData).forEach(function(co) {
+      if (co.cik_str && co.ticker) {
+        // Store both zero-padded and plain integer CIK as keys
+        var cikInt = parseInt(co.cik_str, 10);
+        cikToTicker[cikInt] = co.ticker.toUpperCase();
+        cikToTicker[co.cik_str] = co.ticker.toUpperCase();  // zero-padded string
+      }
+    });
+    log('[P1] Ticker map loaded: ' + Object.keys(cikToTicker).length/2 + ' companies.', 'p');
+  } catch(e) {
+    log('[P1] Ticker map failed: ' + e.message + '. Trying fallback...', 'a');
+    // Fallback: try the exchange-specific tickers file
+    try {
+      var exData = await secData('/submissions/company_tickers_exchange.json');
+      var fields = exData.fields || [];  // ["cik","name","ticker","exchange"]
+      var tikIdx = fields.indexOf('ticker');
+      var cikIdx = fields.indexOf('cik');
+      (exData.data || []).forEach(function(row) {
+        if (row[cikIdx] && row[tikIdx]) {
+          cikToTicker[parseInt(row[cikIdx])] = String(row[tikIdx]).toUpperCase();
         }
       });
-    });
+      log('[P1] Fallback ticker map: ' + Object.keys(cikToTicker).length + ' entries.', 'p');
+    } catch(e2) {
+      log('[P1] Both ticker maps failed. P1 disabled this scan.', 'r');
+      return [];
+    }
+  }
 
-    // If the first batch was small, try to get more (EDGAR returns max ~10 by default)
-    // Use from=0&size=40 to get a larger page
-    if (hits.length < 20) {
+  // ── Step 2: Fetch Form 4 filings from EDGAR EFTS ──────────────────────
+  log('[P1] Querying EDGAR Form 4 filings ' + fromDate + ' → ' + toDate + '...', 'p');
+
+  var seen = {};
+
+  // Helper: extract CIK from EFTS _id field
+  // _id format: "0001234567-24-001234:primary-document.xml"
+  // The accession number prefix IS the filer CIK (10 digits, zero-padded)
+  function cikFromId(id) {
+    if (!id) return null;
+    var m = String(id).match(/^(\d{10})-/);
+    if (!m) return null;
+    return parseInt(m[1], 10);  // strip leading zeros → int
+  }
+
+  // Also: entity_name in _source — try matching against ticker map by name
+  // (fallback when CIK extraction misses)
+  function tickerFromEntityName(name) {
+    // EDGAR entity_name is the FILER (often the insider person, not the company)
+    // so this is unreliable — we rely on CIK primarily
+    return null;
+  }
+
+  try {
+    // Fetch multiple pages to get a good sample
+    var allHits = [];
+    var pages = [0, 10, 20, 30];  // offsets — EDGAR returns 10 per page by default
+
+    for (var p = 0; p < pages.length; p++) {
       try {
-        var data2 = await edgar(
-          '/LATEST/search-index?forms=4&dateRange=custom&startdt=' + fromDate +
-          '&enddt=' + toDate + '&from=0&size=40'
+        var data = await edgar(
+          '/LATEST/search-index?forms=4&dateRange=custom' +
+          '&startdt=' + fromDate + '&enddt=' + toDate +
+          '&from=' + pages[p]
         );
-        var hits2 = (data2.hits && data2.hits.hits) ? data2.hits.hits : [];
-        hits2.forEach(function(h) {
-          var src = h._source || {};
-          var names = [].concat(src.display_names || []);
-          names.forEach(function(n) {
-            var m = String(n).match(/\(([A-Z]{1,5})\)\s*$/);
-            if (m && m[1] && !found[m[1]]) {
-              found[m[1]] = { sym: m[1], source: 'insider', filingDate: src.file_date || toDate };
-            }
-          });
-        });
-      } catch(e2) { /* best effort */ }
+        var batch = (data.hits && data.hits.hits) ? data.hits.hits : [];
+        allHits = allHits.concat(batch);
+        if (p === 0) {
+          var total = (data.hits && data.hits.total) ? data.hits.total.value : 0;
+          log('[P1] ~' + total + ' Form 4 filings in window. Resolving tickers...', 'p');
+        }
+        if (batch.length < 10) break;  // no more pages
+        await sleep(300);  // respect SEC rate limit
+      } catch(pe) { break; }
     }
 
-    results = Object.values(found);
-    log('[P1] Extracted ' + results.length + ' unique tickers from Form 4 filings.', 'p');
+    log('[P1] Processing ' + allHits.length + ' filing records...', 'p');
+
+    allHits.forEach(function(h) {
+      var cik = cikFromId(h._id);
+      if (!cik) return;
+      var ticker = cikToTicker[cik];
+      if (!ticker) return;
+      if (seen[ticker]) return;
+      seen[ticker] = true;
+      results.push({ sym: ticker, source: 'insider',
+                     filingDate: (h._source || {}).file_date || toDate });
+    });
+
+    log('[P1] Resolved ' + results.length + ' tickers from Form 4 CIKs.', 'p');
 
   } catch(e) {
-    log('[P1] EDGAR error: ' + e.message + '. Continuing with Pipeline 2 only.', 'a');
-    return [];
+    log('[P1] EDGAR query error: ' + e.message, 'a');
   }
 
   return results;
