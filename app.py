@@ -1,11 +1,11 @@
 from flask import Flask, request, jsonify, send_from_directory
 import requests
 import os
-import re
 
 app = Flask(__name__, static_folder='static')
 
 FINNHUB_BASE = 'https://finnhub.io/api/v1'
+
 SEC_HEADERS = {
     'User-Agent': 'APEX/SCAN research@apex-scan.com',
     'Accept': 'application/json'
@@ -33,6 +33,7 @@ def finnhub_proxy():
 
 @app.route('/api/sec/edgar')
 def sec_edgar_proxy():
+    """Proxy to efts.sec.gov (EDGAR full-text search)"""
     path = request.args.get('path')
     if not path:
         return jsonify({'error': 'Missing path'}), 400
@@ -40,6 +41,25 @@ def sec_edgar_proxy():
         url = 'https://efts.sec.gov' + path
         r = requests.get(url, headers=SEC_HEADERS, timeout=20)
         return jsonify(r.json()), r.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/sec/www')
+def sec_www_proxy():
+    """Proxy to www.sec.gov (ticker maps, daily indexes, filing archives)"""
+    path = request.args.get('path')
+    if not path:
+        return jsonify({'error': 'Missing path'}), 400
+    try:
+        url = 'https://www.sec.gov' + path
+        r = requests.get(url, headers=SEC_HEADERS, timeout=30)
+        content_type = r.headers.get('Content-Type', '')
+        if 'json' in content_type:
+            return jsonify(r.json()), r.status_code
+        else:
+            # Plain text (daily index files) — return as JSON string
+            from flask import Response
+            return Response(r.text, status=r.status_code, mimetype='text/plain')
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
