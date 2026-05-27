@@ -67,40 +67,56 @@ def sec_facts():
 @app.route('/api/sec/form4')
 def sec_form4():
     """
-    Pulls real Form 4 filings from EDGAR full-text search for a given ticker.
-    Returns raw filings list with transaction type, shares, and price.
+    Accepts either a ticker symbol OR a raw CIK number as the 'ticker' param.
+    Resolves to the company's ticker and returns recent Form 4 filings.
     """
-    ticker = request.args.get('ticker', '').upper().strip()
-    if not ticker:
+    ticker_or_cik = request.args.get('ticker', '').strip()
+    if not ticker_or_cik:
         return jsonify({'error': 'Missing ticker'}), 400
 
     try:
-        # Step 1: resolve CIK from ticker
-        cik_url = f'{EDGAR_BASE}/submissions/CIK'
-        lookup  = requests.get(
-            f'https://efts.sec.gov/LATEST/search-index?q=%22{ticker}%22&dateRange=custom&startdt=2020-01-01&forms=4',
-            headers=SEC_HEADERS, timeout=20
-        )
-        # Step 1b: use the company tickers JSON — much more reliable
+        # Load the full company_tickers map once
         tickers_r = requests.get(
             'https://www.sec.gov/files/company_tickers.json',
             headers=SEC_HEADERS, timeout=20
         )
         tickers_data = tickers_r.json()
-        cik = None
-        for entry in tickers_data.values():
-            if entry.get('ticker', '').upper() == ticker:
-                cik = str(entry['cik_str'])
-                break
+
+        cik    = None
+        ticker = None
+        name   = ''
+
+        # Decide: is input a CIK (all digits) or a ticker?
+        if re.match(r'^\d+$', ticker_or_cik):
+            # Input is a CIK — find matching ticker
+            target_cik = int(ticker_or_cik)
+            for entry in tickers_data.values():
+                if entry.get('cik_str') == target_cik:
+                    cik    = str(target_cik)
+                    ticker = entry.get('ticker', '').upper()
+                    name   = entry.get('title', '')
+                    break
+        else:
+            # Input is a ticker
+            ticker = ticker_or_cik.upper()
+            for entry in tickers_data.values():
+                if entry.get('ticker', '').upper() == ticker:
+                    cik  = str(entry['cik_str'])
+                    name = entry.get('title', '')
+                    break
 
         if not cik:
-            return jsonify({'error': 'CIK not found', 'ticker': ticker}), 404
+            return jsonify({'error': 'Not found', 'input': ticker_or_cik}), 404
 
-        # Step 2: pull submissions feed for this CIK — contains all recent filings
-        padded = cik.zfill(10)
+        # Pull submissions feed — contains all recent filings
+        padded  = cik.zfill(10)
         sub_url = f'{EDGAR_BASE}/submissions/CIK{padded}.json'
         sub_r   = requests.get(sub_url, headers=SEC_HEADERS, timeout=20)
         sub     = sub_r.json()
+
+        # Override ticker/name from submissions if available
+        ticker = sub.get('tickers', [ticker])[0] if sub.get('tickers') else ticker
+        name   = sub.get('name', name)
 
         recent  = sub.get('filings', {}).get('recent', {})
         forms   = recent.get('form', [])
@@ -113,17 +129,17 @@ def sec_form4():
             if f == '4' and len(form4s) < 20:
                 form4s.append({
                     'form':            f,
-                    'filingDate':      dates[i] if i < len(dates) else '',
+                    'filingDate':      dates[i]   if i < len(dates)   else '',
                     'accessionNumber': accNums[i] if i < len(accNums) else '',
-                    'primaryDocument': docs[i] if i < len(docs) else '',
+                    'primaryDocument': docs[i]    if i < len(docs)    else '',
                     'cik':             cik
                 })
 
         return jsonify({
-            'ticker':     ticker,
-            'cik':        cik,
-            'companyName': sub.get('name', ''),
-            'form4s':     form4s
+            'ticker':      ticker,
+            'cik':         cik,
+            'companyName': name,
+            'form4s':      form4s
         })
 
     except Exception as e:
