@@ -57,70 +57,98 @@ def sec_form4_index():
     limit = int(request.args.get('limit', 200))
 
     try:
-        # Determine current quarter
-        now = datetime.datetime.utcnow()
-        quarter = (now.month - 1) // 3 + 1
+        now    = datetime.datetime.utcnow()
         cutoff = (now - datetime.timedelta(days=days)).date()
+        results   = []
+        seen_cik  = set()
 
-        idx_url = f'https://www.sec.gov/Archives/edgar/full-index/{now.year}/QTR{quarter}/form.idx'
-        r = requests.get(idx_url, headers={**SEC_HEADERS, 'Accept': 'text/plain'}, timeout=30)
-        r.raise_for_status()
+        def parse_idx(text):
+            """Parse EDGAR form.idx fixed-width text, return Form 4 filings after cutoff."""
+            out = []
+            data_started = False
+            for line in text.splitlines():
+                if not data_started:
+                    if line.startswith('----------'):
+                        data_started = True
+                    continue
+                if not line.startswith('4 '):
+                    continue
+                try:
+                    form_type  = line[0:12].strip()
+                    company    = line[12:74].strip()
+                    cik_raw    = line[74:86].strip()
+                    date_filed = line[86:98].strip()
+                    filename   = line[98:].strip()
+                    if form_type != '4':
+                        continue
+                    filed_date = datetime.date.fromisoformat(date_filed)
+                    if filed_date < cutoff:
+                        continue
+                    out.append((cik_raw, company, date_filed, filename))
+                except (ValueError, IndexError):
+                    continue
+            return out
 
-        # Parse the fixed-width text file
-        # Format: Form Type  |  Company Name  |  CIK  |  Date Filed  |  Filename
-        # Lines before the separator (------) are headers; skip them.
-        lines = r.text.splitlines()
-        data_started = False
-        results = []
-        seen_cik = set()
+        # Strategy 1: Try the quarterly full index with a 60s timeout
+        # The file is 5-10MB — previous 30s timeout was causing failures
+        quarter = (now.month - 1) // 3 + 1
+        quarterly_url = f'https://www.sec.gov/Archives/edgar/full-index/{now.year}/QTR{quarter}/form.idx'
+        raw_rows = []
+        source_used = 'quarterly'
 
-        for line in lines:
-            if not data_started:
-                if line.startswith('----------'):
-                    data_started = True
-                continue
+        try:
+            r = requests.get(quarterly_url,
+                             headers={**SEC_HEADERS, 'Accept': 'text/plain'},
+                             timeout=60, stream=True)
+            r.raise_for_status()
+            # Stream the content to avoid timeout on slow responses
+            chunks = []
+            for chunk in r.iter_content(chunk_size=65536):
+                chunks.append(chunk)
+            text = b''.join(chunks).decode('utf-8', errors='replace')
+            raw_rows = parse_idx(text)
+        except Exception as qe:
+            # Strategy 2: Fall back to the daily company.idx files for the last N days
+            # These are much smaller (~100KB each) and much faster to fetch
+            source_used = 'daily_fallback'
+            check_date = now.date()
+            for _ in range(min(days, 14)):  # check last 14 days max
+                try:
+                    yr  = check_date.year
+                    qtr = (check_date.month - 1) // 3 + 1
+                    day_url = (f'https://www.sec.gov/Archives/edgar/daily-index/'
+                               f'{yr}/QTR{qtr}/form{check_date.strftime("%Y%m%d")}.idx')
+                    dr = requests.get(day_url,
+                                      headers={**SEC_HEADERS, 'Accept': 'text/plain'},
+                                      timeout=20)
+                    if dr.status_code == 200:
+                        raw_rows.extend(parse_idx(dr.text))
+                except Exception:
+                    pass
+                check_date -= datetime.timedelta(days=1)
 
-            # Form 4 lines start with '4 '
-            if not line.startswith('4 '):
-                continue
-
-            # Fixed-width columns: form(12) company(62) cik(12) date(12) filename
+        # Deduplicate and build results
+        for cik_raw, company, date_filed, filename in raw_rows:
             try:
-                form_type   = line[0:12].strip()
-                company     = line[12:74].strip()
-                cik_raw     = line[74:86].strip()
-                date_filed  = line[86:98].strip()
-                filename    = line[98:].strip()
-
-                if form_type != '4':
-                    continue
-
-                filed_date = datetime.date.fromisoformat(date_filed)
-                if filed_date < cutoff:
-                    continue
-
                 cik = str(int(cik_raw))  # strip leading zeros
-                if cik in seen_cik:
-                    continue
-                seen_cik.add(cik)
-
-                results.append({
-                    'cik':         cik,
-                    'companyName': company,
-                    'dateFiled':   date_filed,
-                    'filename':    filename
-                })
-
-                if len(results) >= limit:
-                    break
-
-            except (ValueError, IndexError):
+            except (ValueError, TypeError):
                 continue
+            if cik in seen_cik:
+                continue
+            seen_cik.add(cik)
+            results.append({
+                'cik':         cik,
+                'companyName': company,
+                'dateFiled':   date_filed,
+                'filename':    filename
+            })
+            if len(results) >= limit:
+                break
 
         return jsonify({
             'count':   len(results),
             'cutoff':  str(cutoff),
-            'source':  idx_url,
+            'source':  source_used,
             'filings': results
         })
 
