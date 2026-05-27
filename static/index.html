@@ -477,48 +477,104 @@ async function runPipeline1(poolSize) {
   const form4Hits = [];
 
   try {
-    // EDGAR full-text search for recent Form 4 filings with "Purchase" transactions
+    // Step A: Build CIK → ticker map from SEC company_tickers.json (via our backend)
+    setPipeState(1, 'active', 'Loading SEC company ticker map...');
+    let cikToTicker = {};
+    try {
+      const cikResp = await fetch('/api/sec/cik?ticker=__ALL__');
+      // __ALL__ won't match, but we need the full map — use a different approach:
+      // Load it via the existing /api/sec/cik endpoint for known tickers,
+      // OR cache the full map via a new backend endpoint.
+      // For now, fall back to resolving CIKs individually per hit below.
+    } catch(e) { /* will resolve per-CIK below */ }
+
+    // Step B: Search EDGAR for recent Form 4 filings
     const searchUrl = '/api/sec/edgar?path=' + encodeURIComponent(
-      '/LATEST/search-index?q=%22Purchase%22&forms=4&dateRange=custom&startdt=' +
-      getPast(30) + '&enddt=' + getPast(0)
+      '/LATEST/search-index?q=%22P+-+Purchase%22&forms=4&dateRange=custom&startdt=' +
+      getPast(45) + '&enddt=' + getPast(0)
     );
     const resp = await fetch(searchUrl);
-    if (!resp.ok) throw new Error('EDGAR search failed');
+    if (!resp.ok) throw new Error('EDGAR search HTTP ' + resp.status);
     const data = await resp.json();
 
     const hits = (data.hits && data.hits.hits) ? data.hits.hits : [];
-    log('PIPELINE 1 — Found ' + hits.length + ' Form 4 Purchase filings in last 30 days', 'p');
+    log('PIPELINE 1 — ' + hits.length + ' Form 4 Purchase filings found in EDGAR (last 45 days)', 'p');
 
-    // Extract unique tickers from entity names and filing metadata
-    const seen = new Set();
-    for (const hit of hits.slice(0, poolSize * 3)) {
+    if (!hits.length) throw new Error('No hits returned — EDGAR may be throttling');
+
+    // Step C: Extract CIKs from display_names.id (format: "CIK0000320193")
+    // display_names entries look like: { name: "COOK TIMOTHY D", id: "CIK0000320193" }
+    // The ISSUER (company being traded) is usually the LAST entry in display_names
+    const seenCIK = new Set();
+    const cikQueue = [];
+
+    for (const hit of hits) {
       const src = hit._source || {};
-      const ticker = (src.period_of_report || src.file_date || '').slice(0,10);
-      const entityName = src.display_names || [];
-      // Pull tickers from display_names array
-      for (const ent of entityName) {
-        if (ent.ticker && !seen.has(ent.ticker)) {
-          seen.add(ent.ticker);
-          form4Hits.push({
-            ticker: ent.ticker,
-            name:   ent.name || '',
-            cik:    ent.id ? ent.id.replace('CIK','') : '',
-            filingDate: src.file_date || '',
-            source: 'SEC_EDGAR_FORM4'
-          });
-          if (form4Hits.length >= poolSize) break;
-        }
-      }
-      if (form4Hits.length >= poolSize) break;
+      const names = src.display_names || [];
+      // The issuer (company) is typically the last display_name entry for Form 4s
+      // (first entries are the reporting persons/insiders)
+      const issuer = names[names.length - 1] || names[0];
+      if (!issuer || !issuer.id) continue;
+      const rawCIK = issuer.id.replace(/^CIK0*/,''); // strip leading zeros and "CIK"
+      if (!rawCIK || seenCIK.has(rawCIK)) continue;
+      seenCIK.add(rawCIK);
+      cikQueue.push({
+        cik:        rawCIK,
+        name:       issuer.name || '',
+        filingDate: src.file_date || '',
+        source:     'SEC_EDGAR_FORM4'
+      });
+      if (cikQueue.length >= poolSize * 3) break;
     }
 
-    setPipeState(1, 'done', form4Hits.length + ' Form 4 insider buy tickers extracted');
+    log('PIPELINE 1 — Resolving ' + cikQueue.length + ' CIKs to tickers...', 'p');
+    setPipeState(1, 'active', 'Resolving CIKs to tickers...');
+
+    // Step D: Resolve each CIK to a ticker symbol
+    // We batch-resolve by calling /api/sec/form4 which does CIK→ticker lookup internally
+    // Limit concurrent requests to avoid hammering EDGAR
+    let resolved = 0;
+    for (const item of cikQueue) {
+      if (form4Hits.length >= poolSize) break;
+      try {
+        const f4resp = await secAPI('form4', { ticker: item.cik }); // pass CIK as ticker hint
+        // form4 endpoint resolves CIK→ticker internally via company_tickers.json
+        // If that fails, try direct CIK resolution
+        let ticker = null;
+        if (f4resp && f4resp.ticker && f4resp.ticker !== item.cik) {
+          ticker = f4resp.ticker;
+        } else {
+          // Direct CIK→ticker resolution
+          const cikResp = await secAPI('cik', { ticker: item.cik });
+          // cik endpoint matches by ticker, not CIK — use the submissions feed instead
+          const subResp = await fetch('/api/sec/form4?ticker=' + encodeURIComponent(item.cik));
+          if (subResp.ok) {
+            const subData = await subResp.json();
+            if (subData && subData.ticker && subData.ticker.length <= 6) {
+              ticker = subData.ticker;
+            }
+          }
+        }
+        if (ticker && /^[A-Z]{1,6}$/.test(ticker)) {
+          form4Hits.push({
+            ticker,
+            name:       item.name,
+            cik:        item.cik,
+            filingDate: item.filingDate,
+            source:     'SEC_EDGAR_FORM4'
+          });
+          resolved++;
+        }
+      } catch(e) { /* skip unresolvable */ }
+    }
+
+    setPipeState(1, 'done', form4Hits.length + ' Form 4 insider buy tickers resolved');
     setSV('f4', form4Hits.length);
-    log('PIPELINE 1 — ' + form4Hits.length + ' tickers with recent insider purchases found', 'p');
+    log('PIPELINE 1 — ' + form4Hits.length + ' tickers with recent insider purchases resolved from EDGAR', 'p');
 
   } catch(e) {
-    log('PIPELINE 1 — EDGAR search error: ' + e.message + ' (continuing with Finnhub insider data)', 'a');
-    setPipeState(1, 'err', 'Fell back to Finnhub insider data');
+    log('PIPELINE 1 — EDGAR error: ' + e.message + ' (Pipeline 2 continues independently)', 'a');
+    setPipeState(1, 'err', 'EDGAR unavailable — using Finnhub insider data only');
   }
 
   return form4Hits;
@@ -565,24 +621,25 @@ async function runPipeline2(key, symbols, config) {
   log('PIPELINE 2 — Universe: ' + common.length.toLocaleString() + ' common stocks', 'c');
   setSV('pool', common.length.toLocaleString());
 
-  // ── DETERMINISTIC: sort by description length (proxy for established name)
-  // then shuffle within buckets to get varied but repeatable results
-  // This replaces the pure random sample with a structured draw
-  common = common.sort((a, b) => {
-    const aD = (a.description || a.symbol || '').length;
-    const bD = (b.description || b.symbol || '').length;
-    return bD - aD;
-  });
+  // ── DETERMINISTIC STRIDE SAMPLE + RANDOM TOP-UP ─────────────────────────────
+  // Sort a FROZEN COPY by symbol (stable, spreads across alphabet/sectors).
+  // Never mutate common[] — mutations caused the previous zero-qualified bug.
+  const sorted = [...common].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-  // Take evenly-spaced samples across the full sorted universe
-  // This ensures we see stocks from all market cap zones, not just lucky random draws
-  const step = Math.max(1, Math.floor(common.length / (poolSize * 8)));
+  // Stride sample: evenly-spaced picks across the full sorted universe.
+  // Budget = poolSize * 15 gives plenty to filter down from.
+  const budget = poolSize * 15;
+  const step   = Math.max(1, Math.floor(sorted.length / budget));
   const sample = [];
-  for (let i = 0; i < common.length && sample.length < poolSize * 8; i += step) {
-    sample.push(common[i]);
+  for (let i = 0; i < sorted.length && sample.length < budget; i += step) {
+    sample.push(sorted[i]);
   }
-  // Add a random component so repeated scans aren't identical
-  const randomSlice = common.sort(() => Math.random() - 0.5).slice(0, poolSize * 2);
+
+  // Random top-up on a SEPARATE copy (never mutates sorted[])
+  const randomPool  = [...common].sort(() => Math.random() - 0.5);
+  const randomSlice = randomPool.slice(0, poolSize * 4);
+
+  // Merge — stride sample checked first, random additions at the end
   const combined = [...new Map([...sample, ...randomSlice].map(s => [s.symbol, s])).values()];
 
   log('PIPELINE 2 — Sampling ' + combined.length + ' stocks (deterministic + random mix)...', 'c');
@@ -607,19 +664,32 @@ async function runPipeline2(key, symbols, config) {
       const price = quote.c || 0;
       const vol   = quote.v || 0;
 
+      // Hard rejects: price and volume are real-time and reliable
       if (price < minPrice) continue;
       if (vol < minVol) continue;
+      // Hard reject: price > $15 is definitely not micro/nano range
+      if (price > 15) continue;
 
-      const isNano  = mc > 2 && mc < 50;
-      const isMicro = mc >= 50 && mc <= 300;
-      if (caprange === 'nano'  && !isNano)  continue;
-      if (caprange === 'micro' && !isMicro) continue;
-      if (caprange === 'both'  && !isNano && !isMicro) continue;
+      // Market cap: Finnhub free tier often returns 0 for small caps.
+      // If mc=0 but price and volume look small-cap, let it through as UNKNOWN.
+      // The deep enrichment phase will re-check with the full metric call.
+      const isNano    = mc > 2 && mc < 50;
+      const isMicro   = mc >= 50 && mc <= 300;
+      const mcUnknown = mc === 0 || mc == null;
+
+      if (!mcUnknown) {
+        // We have real mc data — apply the cap filter strictly
+        if (caprange === 'nano'  && !isNano)  continue;
+        if (caprange === 'micro' && !isMicro) continue;
+        if (caprange === 'both'  && !isNano && !isMicro) continue;
+      }
+      // If mcUnknown=true: let it through — we'll verify in deep phase
 
       if (sector !== 'all') {
         const ind  = (profile.finnhubIndustry || '').toLowerCase();
         const keys = SECTOR_MAP[sector] || [];
-        if (!keys.some(k => ind.includes(k))) continue;
+        // If industry is also unknown, let through (small cap profiles are often incomplete)
+        if (ind && ind !== 'n/a' && !keys.some(k => ind.includes(k))) continue;
       }
 
       candidates.push({
@@ -628,9 +698,9 @@ async function runPipeline2(key, symbols, config) {
         ind:   profile.finnhubIndustry || 'N/A',
         mc, price, vol,
         chg:   quote.dp || 0,
-        type:  isNano ? 'nano' : 'micro',
+        type:  isNano ? 'nano' : isMicro ? 'micro' : 'unknown',
         exch:  profile.exchange || '',
-        cik:   '', // will resolve in deep phase
+        cik:   '',
         source: 'FUNDAMENTAL'
       });
 
@@ -800,6 +870,26 @@ async function runScan() {
         c.ins  = (insiderFH.data || []).slice(0, 8);
         c.news = (news || []).slice(0, 8);
         c.conf = dataConfidence(c.m); // % of key fields filled
+
+        // ── Re-evaluate market cap for mc=0 stocks that passed the first filter ─
+        // The /stock/metric call often returns better mc data than /stock/profile2
+        if (c.mc === 0 || c.type === 'unknown') {
+          const deepMc = c.m.marketCapitalization || c.m.enterpriseValue || 0;
+          if (deepMc > 0) {
+            c.mc   = deepMc;
+            c.type = deepMc < 50 ? 'nano' : deepMc <= 300 ? 'micro' : 'large';
+          }
+        }
+        // After re-evaluation, discard anything clearly out of range
+        if (c.type === 'large' || (c.mc > 300 && c.mc !== 0)) {
+          log(c.sym + ' — discarded post-enrichment (mc ' + fmtCap(c.mc) + ' too large)', 'a');
+          continue;
+        }
+        // Also discard if mc is still 0 after deep fetch and we have no insider signal
+        if ((c.mc === 0 || c.type === 'unknown') && c.source === 'FUNDAMENTAL') {
+          log(c.sym + ' — discarded (no market cap data available)', 'a');
+          continue;
+        }
 
         // ── Step 4: Form 4 data (if not already enriched by EDGAR directly) ──
         if (!c.form4 && c.cik) {
