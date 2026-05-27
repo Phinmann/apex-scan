@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import requests
 import os
 import re
+import datetime
 
 app = Flask(__name__, static_folder='static')
 
@@ -27,7 +28,6 @@ def finnhub_proxy():
     if not path or not token:
         return jsonify({'error': 'Missing path or token'}), 400
 
-    # Only allow known safe Finnhub paths
     allowed = [
         '/stock/symbol', '/quote', '/stock/profile2',
         '/stock/metric', '/stock/insider-transactions',
@@ -45,50 +45,107 @@ def finnhub_proxy():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ── SEC EDGAR — company facts (shares outstanding history + financials) ────────
-@app.route('/api/sec/facts')
-def sec_facts():
+# ── SEC EDGAR — Form 4 index (Pipeline 1 backbone) ────────────────────────────
+@app.route('/api/sec/form4index')
+def sec_form4_index():
     """
-    Returns the full company-facts JSON for a given CIK.
-    Used to derive share count trend and revenue from official XBRL data.
+    Fetches the EDGAR quarterly full-index form.idx file.
+    Filters to Form 4 filings from the last N days.
+    Returns list of {cik, companyName, dateFiled} — reliable, no search API needed.
     """
-    cik = request.args.get('cik', '').strip().lstrip('0')
-    if not cik:
-        return jsonify({'error': 'Missing cik'}), 400
+    days = int(request.args.get('days', 30))
+    limit = int(request.args.get('limit', 200))
+
     try:
-        padded = cik.zfill(10)
-        url = f'{EDGAR_BASE}/api/xbrl/companyfacts/CIK{padded}.json'
-        r   = requests.get(url, headers=SEC_HEADERS, timeout=25)
-        return jsonify(r.json()), r.status_code
+        # Determine current quarter
+        now = datetime.datetime.utcnow()
+        quarter = (now.month - 1) // 3 + 1
+        cutoff = (now - datetime.timedelta(days=days)).date()
+
+        idx_url = f'https://www.sec.gov/Archives/edgar/full-index/{now.year}/QTR{quarter}/form.idx'
+        r = requests.get(idx_url, headers={**SEC_HEADERS, 'Accept': 'text/plain'}, timeout=30)
+        r.raise_for_status()
+
+        # Parse the fixed-width text file
+        # Format: Form Type  |  Company Name  |  CIK  |  Date Filed  |  Filename
+        # Lines before the separator (------) are headers; skip them.
+        lines = r.text.splitlines()
+        data_started = False
+        results = []
+        seen_cik = set()
+
+        for line in lines:
+            if not data_started:
+                if line.startswith('----------'):
+                    data_started = True
+                continue
+
+            # Form 4 lines start with '4 '
+            if not line.startswith('4 '):
+                continue
+
+            # Fixed-width columns: form(12) company(62) cik(12) date(12) filename
+            try:
+                form_type   = line[0:12].strip()
+                company     = line[12:74].strip()
+                cik_raw     = line[74:86].strip()
+                date_filed  = line[86:98].strip()
+                filename    = line[98:].strip()
+
+                if form_type != '4':
+                    continue
+
+                filed_date = datetime.date.fromisoformat(date_filed)
+                if filed_date < cutoff:
+                    continue
+
+                cik = str(int(cik_raw))  # strip leading zeros
+                if cik in seen_cik:
+                    continue
+                seen_cik.add(cik)
+
+                results.append({
+                    'cik':         cik,
+                    'companyName': company,
+                    'dateFiled':   date_filed,
+                    'filename':    filename
+                })
+
+                if len(results) >= limit:
+                    break
+
+            except (ValueError, IndexError):
+                continue
+
+        return jsonify({
+            'count':   len(results),
+            'cutoff':  str(cutoff),
+            'source':  idx_url,
+            'filings': results
+        })
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ── SEC EDGAR — Form 4 insider filings direct feed ───────────────────────────
+# ── SEC EDGAR — Form 4 detail + CIK→ticker resolution ────────────────────────
 @app.route('/api/sec/form4')
 def sec_form4():
     """
-    Accepts either a ticker symbol OR a raw CIK number as the 'ticker' param.
-    Resolves to the company's ticker and returns recent Form 4 filings.
+    Accepts a ticker symbol OR raw CIK number as 'ticker' param.
+    Resolves to ticker and returns recent Form 4 filing metadata.
     """
     ticker_or_cik = request.args.get('ticker', '').strip()
     if not ticker_or_cik:
         return jsonify({'error': 'Missing ticker'}), 400
 
     try:
-        # Load the full company_tickers map once
-        tickers_r = requests.get(
-            'https://www.sec.gov/files/company_tickers.json',
-            headers=SEC_HEADERS, timeout=20
-        )
+        tickers_r    = requests.get('https://www.sec.gov/files/company_tickers.json',
+                                    headers=SEC_HEADERS, timeout=20)
         tickers_data = tickers_r.json()
 
-        cik    = None
-        ticker = None
-        name   = ''
+        cik = ticker = name = None
 
-        # Decide: is input a CIK (all digits) or a ticker?
         if re.match(r'^\d+$', ticker_or_cik):
-            # Input is a CIK — find matching ticker
             target_cik = int(ticker_or_cik)
             for entry in tickers_data.values():
                 if entry.get('cik_str') == target_cik:
@@ -97,7 +154,6 @@ def sec_form4():
                     name   = entry.get('title', '')
                     break
         else:
-            # Input is a ticker
             ticker = ticker_or_cik.upper()
             for entry in tickers_data.values():
                 if entry.get('ticker', '').upper() == ticker:
@@ -108,13 +164,11 @@ def sec_form4():
         if not cik:
             return jsonify({'error': 'Not found', 'input': ticker_or_cik}), 404
 
-        # Pull submissions feed — contains all recent filings
         padded  = cik.zfill(10)
         sub_url = f'{EDGAR_BASE}/submissions/CIK{padded}.json'
         sub_r   = requests.get(sub_url, headers=SEC_HEADERS, timeout=20)
         sub     = sub_r.json()
 
-        # Override ticker/name from submissions if available
         ticker = sub.get('tickers', [ticker])[0] if sub.get('tickers') else ticker
         name   = sub.get('name', name)
 
@@ -126,32 +180,38 @@ def sec_form4():
 
         form4s = []
         for i, f in enumerate(forms):
-            if f == '4' and len(form4s) < 20:
+            if f == '4' and len(form4s) < 10:
                 form4s.append({
-                    'form':            f,
                     'filingDate':      dates[i]   if i < len(dates)   else '',
                     'accessionNumber': accNums[i] if i < len(accNums) else '',
                     'primaryDocument': docs[i]    if i < len(docs)    else '',
-                    'cik':             cik
                 })
 
-        return jsonify({
-            'ticker':      ticker,
-            'cik':         cik,
-            'companyName': name,
-            'form4s':      form4s
-        })
+        return jsonify({'ticker': ticker, 'cik': cik, 'companyName': name, 'form4s': form4s})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ── SEC EDGAR — dilution check via XBRL shares outstanding ───────────────────
+# ── SEC EDGAR — CIK lookup by ticker ─────────────────────────────────────────
+@app.route('/api/sec/cik')
+def sec_cik():
+    ticker = request.args.get('ticker', '').upper().strip()
+    if not ticker:
+        return jsonify({'error': 'Missing ticker'}), 400
+    try:
+        r = requests.get('https://www.sec.gov/files/company_tickers.json',
+                         headers=SEC_HEADERS, timeout=20)
+        for entry in r.json().values():
+            if entry.get('ticker', '').upper() == ticker:
+                return jsonify({'ticker': ticker, 'cik': str(entry['cik_str']),
+                                'name': entry.get('title', '')})
+        return jsonify({'error': 'Not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ── SEC EDGAR — dilution check via XBRL ──────────────────────────────────────
 @app.route('/api/sec/dilution')
 def sec_dilution():
-    """
-    Pulls CommonStockSharesOutstanding from XBRL company facts.
-    Returns annual share counts so the frontend can flag >25% YoY increase.
-    """
     cik = request.args.get('cik', '').strip()
     if not cik:
         return jsonify({'error': 'Missing cik'}), 400
@@ -161,21 +221,18 @@ def sec_dilution():
         r      = requests.get(url, headers=SEC_HEADERS, timeout=25)
         data   = r.json()
 
-        us_gaap = data.get('facts', {}).get('us-gaap', {})
-        shares  = us_gaap.get('CommonStockSharesOutstanding', {})
-        units   = shares.get('units', {})
-        # Prefer 'shares' unit; fall back to first available
-        share_series = units.get('shares', units.get(list(units.keys())[0], [])) if units else []
+        us_gaap      = data.get('facts', {}).get('us-gaap', {})
+        shares       = us_gaap.get('CommonStockSharesOutstanding', {})
+        units        = shares.get('units', {})
+        share_series = units.get('shares', list(units.values())[0] if units else [])
 
-        # Keep 10-K annual filings only (form == '10-K')
         annual = [
-            {'end': e['end'], 'val': e['val'], 'form': e.get('form','')}
+            {'end': e['end'], 'val': e['val'], 'form': e.get('form', '')}
             for e in share_series
             if e.get('form', '') in ('10-K', '10-K/A')
         ]
         annual.sort(key=lambda x: x['end'])
 
-        # Calculate YoY change
         for i in range(1, len(annual)):
             prev = annual[i-1]['val']
             curr = annual[i]['val']
@@ -185,26 +242,7 @@ def sec_dilution():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ── SEC EDGAR — CIK lookup by ticker ─────────────────────────────────────────
-@app.route('/api/sec/cik')
-def sec_cik():
-    """Resolve ticker → CIK using SEC company_tickers.json"""
-    ticker = request.args.get('ticker', '').upper().strip()
-    if not ticker:
-        return jsonify({'error': 'Missing ticker'}), 400
-    try:
-        r = requests.get(
-            'https://www.sec.gov/files/company_tickers.json',
-            headers=SEC_HEADERS, timeout=20
-        )
-        for entry in r.json().values():
-            if entry.get('ticker', '').upper() == ticker:
-                return jsonify({'ticker': ticker, 'cik': str(entry['cik_str']), 'name': entry.get('title','')})
-        return jsonify({'error': 'Not found'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# ── SEC EDGAR — generic EFTS full-text search proxy ──────────────────────────
+# ── SEC EDGAR — generic EFTS proxy ────────────────────────────────────────────
 @app.route('/api/sec/edgar')
 def sec_edgar_proxy():
     path = request.args.get('path')
