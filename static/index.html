@@ -312,7 +312,7 @@ tr:hover td{background:var(--bg3);color:var(--text)}
           <th>Insider Buys</th>
           <th>Form 4</th>
           <th>Data Conf</th>
-          <th>Score</th>
+          <th>Score / Signals</th>
           <th>Status</th>
         </tr></thead>
         <tbody id="cand-body"></tbody>
@@ -854,59 +854,106 @@ async function runScan() {
 
         // ── Step 5: Scoring (weighted, normalized) ────────────────────────────
         let score = 0;
+        const scoreFlags = []; // human-readable reasons logged with each stock
 
-        // Insider buy signal (weighted by count — not just binary)
+        // ── HARD DISQUALIFIERS (applied before any scoring) ───────────────────
+        const gm = isReal(c.m.grossMarginTTM) ? c.m.grossMarginTTM : null;
+        const netMgn = isReal(c.m.netProfitMarginTTM) ? c.m.netProfitMarginTTM : null;
+        const weekRet = isReal(c.m['52WeekPriceReturnDaily']) ? c.m['52WeekPriceReturnDaily'] : null;
         const buys = (c.ins || []).filter(i => (i.transactionType||'').toLowerCase().includes('buy'));
         const buyShares = buys.reduce((s, i) => s + (i.share || 0), 0);
-        if (buys.length > 0) score += Math.min(buys.length * 10, 30);     // max 30
-        if (buyShares > 50000) score += 10;                                 // conviction size
-        if (buyShares > 500000) score += 10;                                // big conviction
+
+        // Fix 1: Negative gross margin = selling below cost. Hard penalty.
+        // Revenue growth is meaningless if the unit economics are negative.
+        if (gm !== null && gm < 0) {
+          score -= 40;
+          scoreFlags.push('NEG GROSS MARGIN');
+        }
+
+        // Fix 2: Falling knife check — down 50%+ in a year is only ok if
+        // insider buying AND fundamentals are stable. Otherwise penalize.
+        if (weekRet !== null && weekRet < -50) {
+          const hasInsiderBuy = buys.length > 0;
+          const fundamentalsOk = (gm !== null && gm > 20) && (netMgn !== null ? netMgn > -30 : true);
+          if (!hasInsiderBuy || !fundamentalsOk) {
+            score -= 20;
+            scoreFlags.push('FALLING KNIFE (no insider support)');
+          } else {
+            score += 8; // down big WITH insider buying + decent fundamentals = opportunity
+            scoreFlags.push('RECOVERY SETUP (insider buying into weakness)');
+          }
+        }
+
+        // ── INSIDER BUY SIGNAL (weighted by share count) ──────────────────────
+        if (buys.length > 0) score += Math.min(buys.length * 10, 30);
+        if (buyShares > 50000)  score += 10;
+        if (buyShares > 500000) score += 10;
+        if (buys.length > 0) scoreFlags.push('INSIDER BUYS: ' + buys.length + ' tx / ' + buyShares.toLocaleString() + ' sh');
 
         // Source boost (appeared in SEC Form 4 EDGAR scan)
-        if (c.source === 'BOTH' || c.source === 'INSIDER_EDGAR') score += 20;
+        if (c.source === 'BOTH' || c.source === 'INSIDER_EDGAR') {
+          score += 20;
+          scoreFlags.push('EDGAR FORM 4 HIT');
+        }
 
-        // Revenue growth
-        const revGr = c.m.revenueGrowthTTMYoy || 0;
-        if (revGr > 10)  score += 8;
-        if (revGr > 25)  score += 8;
-        if (revGr > 50)  score += 8;
-        if (revGr > 100) score += 6;
+        // ── REVENUE GROWTH (only meaningful with positive gross margin) ────────
+        const revGr = isReal(c.m.revenueGrowthTTMYoy) ? c.m.revenueGrowthTTMYoy : 0;
+        // Don't reward revenue growth if gross margin is negative — buying revenue
+        if (gm === null || gm >= 0) {
+          if (revGr > 10)  score += 8;
+          if (revGr > 25)  score += 8;
+          if (revGr > 50)  score += 8;
+          if (revGr > 100) score += 6;
+        }
 
-        // Gross margins
-        const gm = c.m.grossMarginTTM || 0;
-        if (gm > 30) score += 6;
-        if (gm > 50) score += 8;
-        if (gm > 70) score += 6;
+        // ── GROSS MARGIN QUALITY ──────────────────────────────────────────────
+        if (gm !== null && gm >= 0) {
+          if (gm > 30) score += 6;
+          if (gm > 50) score += 8;
+          if (gm > 70) score += 6;
+          scoreFlags.push('GM: ' + gm.toFixed(1) + '%');
+        }
 
-        // Balance sheet
+        // Fix 3: Profitability bonus — actually making money is rare in micro cap
+        // and deserves explicit recognition beyond just a low P/E
+        if (netMgn !== null && netMgn > 0) {
+          score += 12;
+          scoreFlags.push('PROFITABLE: ' + netMgn.toFixed(1) + '% net margin');
+          if (netMgn > 10) score += 6;
+          if (netMgn > 20) score += 4;
+        }
+
+        // ── BALANCE SHEET ─────────────────────────────────────────────────────
         const de = c.m['totalDebt/totalEquityQuarterly'];
         if (de != null && !isNaN(de)) {
-          if (de < 0.3)  score += 12;
+          if (de < 0.3)       score += 12;
           else if (de < 0.75) score += 8;
           else if (de < 1.5)  score += 4;
         }
 
-        // Current ratio
-        const cr = c.m.currentRatioQuarterly || 0;
-        if (cr > 3) score += 10;
+        const cr = isReal(c.m.currentRatioQuarterly) ? c.m.currentRatioQuarterly : 0;
+        if (cr > 3)       score += 10;
         else if (cr > 1.5) score += 6;
+        else if (cr < 1.0 && cr > 0) { score -= 8; scoreFlags.push('CURRENT RATIO <1'); }
 
-        // Valuation attractiveness
-        const pe  = c.m.peExclExtraTTM;
-        const ps  = c.m.psTTM;
+        // ── VALUATION ─────────────────────────────────────────────────────────
+        const pe = c.m.peExclExtraTTM;
+        const ps = c.m.psTTM;
         if (pe != null && pe > 0 && pe < 15)  score += 8;
         if (ps != null && ps > 0 && ps < 1.5) score += 8;
 
-        // Mild momentum (not chasing, but ruling out complete collapse)
+        // ── MOMENTUM (mild signal only) ───────────────────────────────────────
         if (Math.abs(c.chg) > 1 && Math.abs(c.chg) < 10) score += 4;
 
-        // Data confidence bonus
-        if (c.conf >= 70) score += 5;
-        else if (c.conf < 30) score -= 10; // penalize weak data
+        // ── DATA CONFIDENCE ───────────────────────────────────────────────────
+        if (c.conf >= 70)      score += 5;
+        else if (c.conf < 30) { score -= 10; scoreFlags.push('WEAK DATA'); }
 
-        c.score = score;
+        c.score = Math.max(score, 0); // floor at zero — no negative scores in table
+        c.scoreFlags = scoreFlags;
         enriched.push(c);
-        log(c.sym + ' — $' + c.price.toFixed(2) + ' | ' + fmtCap(c.mc) + ' | score ' + score + ' | data ' + c.conf + '%' + (c.source !== 'FUNDAMENTAL' ? ' | ★ ' + c.source : ''), 'g');
+        const flagStr = scoreFlags.length ? ' | ' + scoreFlags.join(' · ') : '';
+        log(c.sym + ' — $' + c.price.toFixed(2) + ' | ' + fmtCap(c.mc) + ' | score ' + c.score + ' | data ' + c.conf + '%' + flagStr, 'g');
 
       } catch(e) {
         c.m = {}; c.ins = []; c.news = []; c.score = 0; c.conf = 0;
@@ -973,7 +1020,11 @@ function renderTable(enriched, selSyms) {
       '</td>' +
       '<td>' + (hasForm4 ? '<span class="badge sec-badge">EDGAR</span>' : '—') + '</td>' +
       '<td class="' + confCl + '">' + (conf > 0 ? conf + '%' : '—') + '</td>' +
-      '<td style="color:var(--green);font-weight:600">' + (c.score || 0) + '</td>' +
+      '<td style="font-size:11px">' +
+      '<span style="color:var(--green);font-weight:600">' + (c.score || 0) + '</span>' +
+      (c.scoreFlags && c.scoreFlags.length ? '<br><span style="font-size:9px;color:var(--amber);line-height:1.4">' +
+        c.scoreFlags.slice(0,2).join(' | ') + '</span>' : '') +
+      '</td>' +
       '<td><span class="badge ' + (isSel ? 'sel' : 'watch') + '">' + (isSel ? 'SELECTED' : 'WATCH') + '</span></td>';
     tbody.appendChild(tr);
   });
