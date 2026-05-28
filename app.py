@@ -3,8 +3,10 @@ import requests
 import os
 import re
 import datetime
+from flask_cors import CORS
 
 app = Flask(__name__, static_folder='static')
+CORS(app)
 
 FINNHUB_BASE = 'https://finnhub.io/api/v1'
 EDGAR_BASE   = 'https://data.sec.gov'
