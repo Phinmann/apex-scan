@@ -63,7 +63,12 @@ def sec_form4_index():
         seen_cik  = set()
 
         def parse_idx(text):
-            """Parse EDGAR form.idx fixed-width text, return Form 4 filings after cutoff."""
+            """
+            Parse EDGAR form.idx using whitespace splitting — more robust than
+            fixed-width parsing which breaks when company names vary in length.
+            Format after header: FormType  CompanyName  CIK  DateFiled  Filename
+            """
+            import re
             out = []
             data_started = False
             for line in text.splitlines():
@@ -71,15 +76,22 @@ def sec_form4_index():
                     if line.startswith('----------'):
                         data_started = True
                     continue
+                # Only Form 4 lines
                 if not line.startswith('4 '):
                     continue
                 try:
-                    form_type  = line[0:12].strip()
-                    company    = line[12:74].strip()
-                    cik_raw    = line[74:86].strip()
-                    date_filed = line[86:98].strip()
-                    filename   = line[98:].strip()
+                    # Split on 2+ consecutive spaces — handles variable company name lengths
+                    parts = re.split(r'  +', line.strip())
+                    if len(parts) < 5:
+                        continue
+                    form_type  = parts[0].strip()
+                    company    = parts[1].strip()
+                    cik_raw    = parts[2].strip()
+                    date_filed = parts[3].strip()
+                    filename   = parts[4].strip()
                     if form_type != '4':
+                        continue
+                    if not cik_raw.isdigit():
                         continue
                     filed_date = datetime.date.fromisoformat(date_filed)
                     if filed_date < cutoff:
