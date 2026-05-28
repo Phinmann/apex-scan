@@ -470,67 +470,122 @@ function addDQ(sym, reason) {
 }
 
 // ── PIPELINE 1 — SEC EDGAR Form 4 real insider buy feed ──────────────────────
-async function runPipeline1(poolSize) {
-  setPipeState(1, 'active', 'Searching SEC EDGAR for insider buys...');
-  log('PIPELINE 1 — Querying SEC EDGAR Form 4 insider buys via AI web search...', 'p');
+async function runPipeline1(poolSize, key) {
+  // Pipeline 1: two-source insider buy detection
+  // Source A: SEC EDGAR form.idx via backend (fixed parser — whitespace split)
+  // Source B: Finnhub insider transactions screened across a sample of stocks
+  // Whichever succeeds first wins. Both running = highest confidence.
+
+  setPipeState(1, 'active', 'Pulling insider buy data...');
+  log('PIPELINE 1 — Scanning for insider open-market purchases...', 'p');
   const form4Hits = [];
+  const seen = new Set();
 
+  // ── SOURCE A: EDGAR backend (now with correct parser) ────────────────────────
+  let edgarOk = false;
   try {
-    // Use Claude API with web search to pull recent Form 4 insider buy tickers.
-    // This bypasses all backend/network/IP issues — Claude searches EDGAR directly.
-    // Ask for micro/nano cap open-market purchases in the last 30 days.
-    const prompt = `Search SEC EDGAR full-text search at https://efts.sec.gov/LATEST/search-index?q=%22Open+Market%22&forms=4&dateRange=custom&startdt=${getPast(30)}&enddt=${getPast(0)} and also search for recent insider buying micro cap small cap stocks SEC Form 4 open market purchase 2026.
-
-Return ONLY a JSON array of up to 30 ticker symbols where company insiders made open-market purchases of their own stock recently. Format: ["TICK1","TICK2","TICK3"]. Only include US-listed stocks with tickers 1-5 characters. No explanation, no markdown, just the JSON array.`;
-
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    if (!resp.ok) throw new Error('Claude API HTTP ' + resp.status);
-    const data = await resp.json();
-
-    // Extract text blocks from response (may include tool_use blocks — filter to text)
-    const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-
-    // Parse the JSON array of tickers
-    const match = textBlocks.match(/\[[\s\S]*?\]/);
-    if (!match) throw new Error('No ticker array found in response');
-
-    const rawTickers = JSON.parse(match[0]);
-    const tickers = rawTickers
-      .map(t => String(t).toUpperCase().trim().replace(/[^A-Z]/g, ''))
-      .filter(t => t.length >= 1 && t.length <= 6);
-
-    log('PIPELINE 1 — ' + tickers.length + ' insider-buy tickers from EDGAR web search', 'p');
-    setSV('f4', tickers.length);
-
-    // Convert to form4Hits format
-    for (const ticker of tickers.slice(0, poolSize)) {
-      form4Hits.push({
-        ticker,
-        name:       '',
-        cik:        '',
-        filingDate: getPast(0),
-        source:     'SEC_EDGAR_FORM4'
-      });
+    const idxResp = await fetch('/api/sec/form4index?days=45&limit=400');
+    if (idxResp.ok) {
+      const idxData = await idxResp.json();
+      const filings = idxData.filings || [];
+      if (filings.length > 0) {
+        log('PIPELINE 1 — EDGAR: ' + filings.length + ' Form 4 filers found in index', 'p');
+        // Shuffle and resolve CIK → ticker for a sample
+        const shuffled = [...filings].sort(() => Math.random() - 0.5);
+        const target = Math.min(shuffled.length, poolSize * 3);
+        setPipeState(1, 'active', 'EDGAR: resolving ' + target + ' CIKs to tickers...');
+        for (const filing of shuffled.slice(0, target)) {
+          if (form4Hits.length >= poolSize) break;
+          try {
+            const f4 = await secAPI('form4', { ticker: filing.cik });
+            if (!f4 || f4.error) continue;
+            const ticker = (f4.ticker || '').toUpperCase().trim();
+            if (!ticker || !/^[A-Z]{1,6}$/.test(ticker) || seen.has(ticker)) continue;
+            seen.add(ticker);
+            form4Hits.push({ ticker, name: f4.companyName || filing.companyName,
+              cik: filing.cik, filingDate: filing.dateFiled, source: 'SEC_EDGAR_FORM4' });
+          } catch(e) { /* skip */ }
+          await sleep(80);
+        }
+        edgarOk = form4Hits.length > 0;
+        log('PIPELINE 1 — EDGAR resolved ' + form4Hits.length + ' tickers', 'p');
+      }
     }
-
-    setPipeState(1, 'done', form4Hits.length + ' insider-buy tickers identified');
-    log('PIPELINE 1 — Done: ' + form4Hits.length + ' Form 4 tickers ready for Pipeline merge', 'p');
-
   } catch(e) {
-    log('PIPELINE 1 — Error: ' + e.message + ' (Pipeline 2 continues independently)', 'a');
-    setPipeState(1, 'err', 'EDGAR search failed — P2 runs independently');
+    log('PIPELINE 1 — EDGAR source failed: ' + e.message, 'a');
   }
 
+  // ── SOURCE B: Finnhub insider transactions ────────────────────────────────────
+  // Pull insider transactions for a broad sample of micro/nano cap stocks.
+  // Flag any with open-market buys in the last 90 days.
+  // This runs regardless of EDGAR success to add additional coverage.
+  try {
+    setPipeState(1, 'active', 'Finnhub: scanning insider transactions...');
+    // Get the full symbol list and sample micro/nano range by price filter
+    const symbols = await fh('/stock/symbol?exchange=US', key);
+    const common = symbols.filter(s => s.type === 'Common Stock');
+    // Sample broadly — pick stocks distributed across the alphabet
+    const step = Math.max(1, Math.floor(common.length / (poolSize * 6)));
+    const sample = [];
+    for (let i = 0; i < common.length && sample.length < poolSize * 6; i += step) {
+      sample.push(common[i]);
+    }
+    // Shuffle for variety
+    const shuffled = [...sample].sort(() => Math.random() - 0.5).slice(0, poolSize * 4);
+
+    let insiderHits = 0;
+    for (const sym of shuffled) {
+      if (insiderHits >= Math.floor(poolSize * 0.5)) break; // cap Finnhub P1 additions
+      try {
+        const [quote, ins] = await Promise.all([
+          fh('/quote?symbol=' + sym.symbol, key),
+          fh('/stock/insider-transactions?symbol=' + sym.symbol, key)
+        ]);
+        const price = quote.c || 0;
+        const mc = quote.mc || 0;
+
+        // Only look at stocks in our price range (rough micro/nano filter)
+        if (price < 1 || price > 50) continue;
+
+        // Check for open-market buys in last 90 days
+        const recentBuys = (ins.data || []).filter(t => {
+          const isOpenMarket = (t.transactionType || '').toLowerCase().includes('buy') ||
+                               (t.transactionCode || '') === 'P';
+          const isRecent = t.transactionDate && 
+            new Date(t.transactionDate) > new Date(Date.now() - 90 * 864e5);
+          return isOpenMarket && isRecent;
+        });
+
+        if (recentBuys.length > 0 && !seen.has(sym.symbol)) {
+          seen.add(sym.symbol);
+          const totalShares = recentBuys.reduce((s, t) => s + (t.share || 0), 0);
+          form4Hits.push({
+            ticker: sym.symbol,
+            name: sym.description || sym.symbol,
+            cik: '',
+            filingDate: recentBuys[0].transactionDate || '',
+            source: 'FINNHUB_INSIDER',
+            buyShares: totalShares,
+            buyCount: recentBuys.length
+          });
+          insiderHits++;
+          log('PIPELINE 1 — Finnhub insider buy: ' + sym.symbol + ' (' + recentBuys.length + ' buy tx, ' + totalShares.toLocaleString() + ' shares)', 'p');
+        }
+      } catch(e) { /* skip */ }
+    }
+    log('PIPELINE 1 — Finnhub source: ' + insiderHits + ' insider-buy stocks found', 'p');
+  } catch(e) {
+    log('PIPELINE 1 — Finnhub insider scan error: ' + e.message, 'a');
+  }
+
+  const total = form4Hits.length;
+  setSV('f4', total);
+  if (total > 0) {
+    setPipeState(1, 'done', total + ' insider-buy tickers (' + (edgarOk ? 'EDGAR+Finnhub' : 'Finnhub') + ')');
+  } else {
+    setPipeState(1, 'err', 'No insider buys found — P2 runs independently');
+    log('PIPELINE 1 — No insider buys detected. P2 fundamental screen continues.', 'a');
+  }
   return form4Hits;
 }
 
@@ -725,7 +780,7 @@ async function runScan() {
 
     // Run both pipelines
     const [form4Tickers, p2Candidates] = await Promise.all([
-      runPipeline1(config.poolSize),
+      runPipeline1(config.poolSize, key),
       runPipeline2(key, symbols, config)
     ]);
 
