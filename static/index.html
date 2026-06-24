@@ -413,7 +413,7 @@ async function runScan() {
     }
 
     candidates.sort(function(a,b) { return Math.abs(b.chg) - Math.abs(a.chg); });
-    var forDeep = candidates.slice(0, Math.min(topN * 4, candidates.length));
+    var forDeep = candidates.slice(0, Math.min(topN * 8, candidates.length));
 
     log('Fetching deep fundamentals for top ' + forDeep.length + ' candidates...', 'b');
     var enriched = [];
